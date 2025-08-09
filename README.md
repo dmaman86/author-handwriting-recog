@@ -10,9 +10,9 @@ This project implements a deep-learning pipeline for **writer identification** b
 - ✅ High accuracy on seen writers - Softmax Model:
   - 98.04% accuracy with majority voting and Softmax Summation
 - ✅ High accuracy on seen writers - Embedding Model:
-  - 93.1% with majority voting
+  - 91.18% with Softmax Summation
 - ✅ Generalization to unseen writers - Embedding Model:
-  - 60.1% accuracy with softmax summation
+  - 67% accuracy with Softmax Summation
 - ✅ Multiple evaluation strategies:
   - Patch-level prediction
   - Majority vote
@@ -26,7 +26,7 @@ This project implements a deep-learning pipeline for **writer identification** b
 
 After initially reaching 56.9% accuracy on known writers during a prior deep learning course, this new version redesigns the full pipeline to:
 
-- Improve document-level accuracy significantly (now over 93%).
+- Improve document-level accuracy significantly (now over 91%).
 - Introduce embedding-based generalization for authors not seen during training.
 - Include visual inspection of embedding quality and separation.
 
@@ -36,11 +36,21 @@ After initially reaching 56.9% accuracy on known writers during a prior deep lea
 
 ```plaintext
 author-handwriting-recog/
-├── Code.ipynb                      # end-to-end Jupyter notebooks (outputs stripped)
-├── generate_authors_dataset.ipynb  # notebook to generate the dataset
-├── .gitignore
+├── code.ipynb
+├── datagenerator.py
+├── generate_authors_dataset.ipynb
 ├── LICENSE
-└── README.md
+├── README.md
+├── requirements.txt
+└── utils
+    ├── __init__.py
+    ├── utils_cnn_predictions.py
+    ├── utils_dataframe.py
+    ├── utils_embedding.py
+    ├── utils_files.py
+    ├── utils_graphics.py
+    ├── utils_model.py
+    └── utils.py
 ```
 
 ---
@@ -52,26 +62,26 @@ author-handwriting-recog/
 | Method                  | Accuracy   |
 | ----------------------- | ---------- |
 | Softmax – Patch Level   | 57.75%     |
-| Softmax – Majority Vote | **98.04%** |
-| Softmax – Softmax Sum   | 98.04%     |
+| Softmax – Majority Vote | 98.04% |
+| Softmax – Softmax Sum   | **98.04%**     |
 
 ### Seen Writers (204 authors) - **Embedding Model**
 
 | Method                  | Accuracy  |
 | ----------------------- | --------- |
-| Softmax – Patch Level   | 48.1%     |
-| Softmax – Majority Vote | **93.1%** |
-| Softmax – Softmax Sum   | 90.6%     |
+| Softmax – Patch Level   | 49.42%     |
+| Softmax – Majority Vote | 90.2% |
+| Softmax – Softmax Sum   | **91.18%**     |
 
 ### Unseen Writers (203 new authors) - **Embedding Model**
 
 | Method                  | Accuracy  |
 | ----------------------- | --------- |
-| Softmax – Patch Level   | 22.9%     |
-| Softmax – Majority Vote | 50.2%     |
-| Softmax – Softmax Sum   | **60.1%** |
+| Softmax – Patch Level   | 24.22%     |
+| Softmax – Majority Vote | 59.61%     |
+| Softmax – Softmax Sum   | **67%** |
 
-> ✅ Results based on Euclidean-distance embeddings and centroid classification.
+> ✅ Results based on Euclidean-distance embeddings and centroid classification, using softmax over negative distances for score aggregation.
 
 ---
 
@@ -107,6 +117,12 @@ This project is for educational and research purposes only.
 - Explore Transformer-based embedding encoders
 
 ---
+
+## Notes:
+- If you encounter compatibily issues, check that you have **Python 3.8+** installed.
+```bash
+python3 --version
+```
 
 ## 📜 License
 
