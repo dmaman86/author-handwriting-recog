@@ -57,29 +57,30 @@ author-handwriting-recog/
 
 ## 📊 Results
 
-### Seen Writers (204 authors) - **Softmax Model**
+### **Seen Writers – Softmax Model**
+| Evaluation Method        | Accuracy |
+|--------------------------|----------|
+| Patch-Level              | 57.75%   |
+| Majority Vote (by image) | 98.04   |
+| Softmax Sum (by image)   | **98.04** |
 
-| Method                  | Accuracy   |
-| ----------------------- | ---------- |
-| Softmax – Patch Level   | 57.75%     |
-| Softmax – Majority Vote | 98.04% |
-| Softmax – Softmax Sum   | **98.04%**     |
+---
 
-### Seen Writers (204 authors) - **Embedding Model**
+### **Seen Writers – Embedding Model**
+| Evaluation Method                         | Accuracy |
+|-------------------------------------------|----------|
+| Patch-Level (Euclidean to centroids)      | 49.42%   |
+| Majority Vote (by image)                  | 90.2%   |
+| Softmax Sum (aggregated centroid scores)  | **91.18%**   |
 
-| Method                  | Accuracy  |
-| ----------------------- | --------- |
-| Softmax – Patch Level   | 49.42%     |
-| Softmax – Majority Vote | 90.2% |
-| Softmax – Softmax Sum   | **91.18%**     |
+---
 
-### Unseen Writers (203 new authors) - **Embedding Model**
-
-| Method                  | Accuracy  |
-| ----------------------- | --------- |
-| Softmax – Patch Level   | 24.22%     |
-| Softmax – Majority Vote | 59.61%     |
-| Softmax – Softmax Sum   | **67%** |
+### **Unseen Writers – Embedding Model**
+| Evaluation Method                         | Accuracy |
+|-------------------------------------------|----------|
+| Patch-Level (Euclidean to centroids)      | 24.22%   |
+| Majority Vote (by image)                  | 59.61%   |
+| Softmax Sum (aggregated centroid scores)  | **67%**   |
 
 > ✅ Results based on Euclidean-distance embeddings and centroid classification, using softmax over negative distances for score aggregation.
 
