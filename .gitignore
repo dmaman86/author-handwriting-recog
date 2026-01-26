@@ -1,6 +1,8 @@
 data/raw/
 data/datasets/patches/
 data/datasets/*.pkl
+data/datasets/*.tar.gz
+data/datasets/*.zip
 
 *.h5
 *.npy
