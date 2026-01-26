@@ -1,2 +1,12 @@
+data/raw/
+data/datasets/patches/
+data/datasets/*.pkl
+
+*.h5
+*.npy
+*.npz
+
+.vscode/
+.conda/
 
 .DS_Store
