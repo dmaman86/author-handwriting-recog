@@ -1,4 +1,5 @@
 from typing import Optional
+
 import tensorflow as tf
 from tensorflow.keras import layers, models
 
@@ -20,21 +21,20 @@ class TransformerEncoder(layers.Layer):
         num_heads: int,
         ff_dim: int,
         dropout_rate: float = 0.1,
-        name: Optional[str] = None
+        name: Optional[str] = None,
     ) -> None:
         super().__init__(name=name)
 
         self.attention = layers.MultiHeadAttention(
-            num_heads=num_heads,
-            key_dim=embed_dim
+            num_heads=num_heads, key_dim=embed_dim
         )
 
         self.ffn = models.Sequential(
             [
-            layers.Dense(ff_dim, activation="relu"),
-            layers.Dense(embed_dim),
+                layers.Dense(ff_dim, activation="relu"),
+                layers.Dense(embed_dim),
             ],
-            name="ffn"
+            name="ffn",
         )
 
         self.norm1 = layers.LayerNormalization(epsilon=1e-6, name="norm1")
@@ -64,3 +64,4 @@ class TransformerEncoder(layers.Layer):
         ffn_output = self.dropout2(ffn_output, training=training)
 
         return self.norm2(out1 + ffn_output)
+

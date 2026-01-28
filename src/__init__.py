@@ -28,31 +28,21 @@ Quick Start:
     )
 """
 
-from .datasets import (AuthorDatasetBuilder, DataGenerator, DataInitializer,
-                       PairDataset, PairGenerator, PairIndexSampler,
-                       PatchNormalizer, SelectiveDataLoader)
+from .datasets import (AuthorDatasetBuilder, AuthorPartitionState,
+                       DataGenerator, DataInitializer, PairDataset,
+                       PairGenerator, PairIndexSampler, PatchNormalizer,
+                       SelectiveDataLoader, SubsetBuilder)
 # Re-export main classes for convenience
 from .io import (FileSystem, ImageAnalyzer, ImageTransformer, PatchExtractor,
                  load, save)
 from .io.logging import LoggerFactory
+from .models import (BinaryCrossEntropyDistance, CNNBackbone,
+                     CNNTransformerBackbone, ContrastiveLoss, ModelComparator,
+                     ModelEvaluator, ModelTrainer, build_embedding_model,
+                     build_siamese_model, get_default_callbacks,
+                     plot_comparison_metrics, plot_embeddings_tsne,
+                     plot_training_history)
 from .processors import AuthorDataLoader, AuthorProcessor, LineSegmentProcessor
-
-# Optional: Import models only if TensorFlow is available
-try:
-    from .models import (BinaryCrossEntropyDistance, CNNBackbone,
-                         CNNTransformerBackbone, ContrastiveLoss,
-                         build_embedding_model, build_siamese_model)
-
-    _MODELS_AVAILABLE = True
-except ImportError:
-    # TensorFlow not installed - models won't be available
-    _MODELS_AVAILABLE = False
-    CNNBackbone = None
-    CNNTransformerBackbone = None
-    build_embedding_model = None
-    build_siamese_model = None
-    ContrastiveLoss = None
-    BinaryCrossEntropyDistance = None
 
 __all__ = [
     # Logging
@@ -72,12 +62,14 @@ __all__ = [
     # Datasets
     "SelectiveDataLoader",
     "AuthorDatasetBuilder",
+    "SubsetBuilder",
     "PairGenerator",
     "DataGenerator",
     "PairIndexSampler",
     "PairDataset",
     "DataInitializer",
     "PatchNormalizer",
+    "AuthorPartitionState",
     # Models
     "CNNBackbone",
     "CNNTransformerBackbone",
@@ -85,6 +77,14 @@ __all__ = [
     "build_siamese_model",
     "ContrastiveLoss",
     "BinaryCrossEntropyDistance",
+    "ContrastiveLoss",
+    "ModelTrainer",
+    "ModelComparator",
+    "ModelEvaluator",
+    "plot_comparison_metrics",
+    "plot_embeddings_tsne",
+    "plot_training_history",
+    "get_default_callbacks",
 ]
 
 __version__ = "0.1.0"

@@ -4,6 +4,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.keras import layers
 
+
 class DataGenerator(tf.keras.utils.Sequence):
 
     def __init__(

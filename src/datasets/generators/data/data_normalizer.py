@@ -3,28 +3,26 @@ import numpy as np
 
 class PatchNormalizer:
 
-    @staticmethod
     def normalize_partition(
+        self,
         data: dict[int, list[np.ndarray]],
     ) -> dict[int, list[np.ndarray]]:
         normalized_data = {}
 
         for author_id, patches in data.items():
-            normalized_data[author_id] = PatchNormalizer.normalize_batch(patches)
+            normalized_data[author_id] = self.normalize_batch(patches)
 
         return normalized_data
 
-    @staticmethod
-    def normalize_batch(patches: list[np.ndarray]) -> list[np.ndarray]:
+    def normalize_batch(self, patches: list[np.ndarray]) -> list[np.ndarray]:
         normalize = []
 
         for patch in patches:
-            normalize.append(PatchNormalizer.normalize_single(patch))
+            normalize.append(self.normalize_single(patch))
 
         return normalize
 
-    @staticmethod
-    def normalize_single(patch: np.ndarray) -> np.ndarray:
+    def normalize_single(self, patch: np.ndarray) -> np.ndarray:
         patch = patch.astype(np.float32)
 
         if patch.max() > 1.0:
