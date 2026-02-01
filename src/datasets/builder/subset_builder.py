@@ -5,13 +5,15 @@ from dataclasses import dataclass
 from typing import Literal
 
 import numpy as np
-from ..loaders.selective_data_loader import SelectiveDataLoader
+
+from ..generators.data.author_partition_state import AuthorPartitionState
 from ..generators.data.data_initializer import DataInitializer
 from ..generators.data.data_normalizer import PatchNormalizer
-from ..generators.data.author_partition_state import AuthorPartitionState
+from ..loaders.selective_data_loader import SelectiveDataLoader
 
 SplitName = Literal["train", "validation", "test"]
-RawSplit = tuple[np.ndarray, np.ndarray]               # (X, y)
+RawSplit = tuple[np.ndarray, np.ndarray]  # (X, y)
+
 
 @dataclass(frozen=True)
 class SubsetBuildConfig:
@@ -24,7 +26,7 @@ class SubsetBuilder:
         self,
         loader: SelectiveDataLoader,
         data_normalizer: PatchNormalizer | None = None,
-        config: SubsetBuildConfig | None = None
+        config: SubsetBuildConfig | None = None,
     ) -> None:
         self._loader = loader
         self._data_normalizer = data_normalizer
@@ -32,24 +34,24 @@ class SubsetBuilder:
 
     def build(self, authors_range: list[int] | range, show_progress_bar: bool = True):
         raw_subset = self._loader.load_dataset_by_authors(
-            authors_id=authors_range, 
-            show_progress_bar=show_progress_bar
-            )
+            authors_id=authors_range, show_progress_bar=show_progress_bar
+        )
 
         result: dict[SplitName, AuthorPartitionState] = {}
 
         for split in self._config.splits:
             raw_split: RawSplit = raw_subset[split]
-            
+
             initializer = DataInitializer(raw_split)
             state = initializer.to_state()
             if self._data_normalizer:
-                state.data = self._data_normalizer.normalize_partition(state.data)
+                state.data = self._data_normalizer.normalize_partition(data=state.data)
 
             result[split] = state
+            del raw_split
+            gc.collect()
 
         del raw_subset
         if self._config.gc_collect:
             gc.collect()
         return result
-

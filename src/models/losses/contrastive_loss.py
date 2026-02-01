@@ -1,5 +1,7 @@
 from typing import Any
+
 import tensorflow as tf
+
 
 class ContrastiveLoss(tf.keras.losses.Loss):
 
@@ -18,8 +20,8 @@ class ContrastiveLoss(tf.keras.losses.Loss):
             Scalar tensor representing the contrastive loss
         """
 
-        emb1: tf.Tensor = embeddings[:, 0, :] # (batch_size, embedding_dim)
-        emb2: tf.Tensor = embeddings[:, 1, :] # (batch_size, embedding_dim)
+        emb1: tf.Tensor = embeddings[:, 0, :]  # (batch_size, embedding_dim)
+        emb2: tf.Tensor = embeddings[:, 1, :]  # (batch_size, embedding_dim)
 
         distances: tf.Tensor = tf.norm(emb1 - emb2, axis=1)
         positive_loss: tf.Tensor = y_true * tf.square(distances)
@@ -28,8 +30,9 @@ class ContrastiveLoss(tf.keras.losses.Loss):
         )
         loss: tf.Tensor = tf.reduce_mean(positive_loss + negative_loss)
         return loss
-    
+
     def get_config(self) -> dict[str, Any]:
         config = super().get_config()
         config.update({"margin": self.margin})
         return config
+

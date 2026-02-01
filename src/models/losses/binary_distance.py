@@ -1,5 +1,7 @@
 from typing import Any
+
 import tensorflow as tf
+
 
 class BinaryCrossEntropyDistance(tf.keras.losses.Loss):
 
@@ -49,3 +51,4 @@ class BinaryCrossEntropyDistance(tf.keras.losses.Loss):
         config: dict[str, Any] = super().get_config()
         config.update({"scale": self.scale})
         return config
+

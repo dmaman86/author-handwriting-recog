@@ -22,6 +22,7 @@ class ModelEvaluator:
         self,
         model: tf.keras.Model,
         model_name: str,
+        embedding_model: tf.keras.Model | None = None,
         log_dir: Path | str | None = None,
     ) -> None:
         """
@@ -33,6 +34,7 @@ class ModelEvaluator:
             log_dir: Directory for logs
         """
         self.model = model
+        self.embedding_model = embedding_model
         self.model_name = model_name
 
         self.logger = LoggerFactory.get_logger(
@@ -98,7 +100,7 @@ class ModelEvaluator:
         )
 
         # Store results
-        self.results = {
+        self.results["pair_patches"] = {
             "accuracy": accuracy,
             "auc": auc,
             "precision": precision,
@@ -117,7 +119,7 @@ class ModelEvaluator:
         self.logger.info(f"  - Recall:    {recall:.4f}")
         self.logger.info(f"  - F1-Score:  {f1:.4f}")
 
-        return self.results
+        return self.results["pair_patches"]
 
     def evaluate_by_voting(
         self,
@@ -153,6 +155,9 @@ class ModelEvaluator:
         y_pred_authors = []
         voting_details = []
 
+        if self.embedding_model is None:
+            raise ValueError("Embedding model is required for voting evaluation")
+
         # Evaluate each author
         for author_id, samples in test_data.items():
             if len(samples) < 2:
@@ -161,46 +166,30 @@ class ModelEvaluator:
                 )
                 continue
 
-            # Generate all pairs for this author
-            pairs = []
-            for i in range(len(samples)):
-                for j in range(i + 1, len(samples)):
-                    pairs.append((samples[i], samples[j]))
-
-            if len(pairs) < min_votes:
+            num_pairs = len(samples) * (len(samples) - 1) // 2
+            if num_pairs < min_votes:
                 self.logger.warning(
-                    f"Author {author_id} has only {len(pairs)} pairs (< {min_votes}), skipping"
+                    f"Author {author_id} has only {num_pairs} pairs (< {min_votes}), skipping"
                 )
                 continue
 
-            # Predict for all pairs
+            samples_array = np.array(samples)  # (num_samples, H, W, C)
+            embeddings = self.embedding_model.predict(samples_array, verbose=0)
+
             votes_same_author = 0
             votes_different_author = 0
 
-            for sample1, sample2 in pairs:
-                # Prepare inputs
-                img1 = np.expand_dims(sample1, axis=0)  # (1, H, W, C)
-                img2 = np.expand_dims(sample2, axis=0)
+            for i in range(len(embeddings)):
+                for j in range(i + 1, len(embeddings)):
+                    distance = np.linalg.norm(embeddings[i] - embeddings[j])
+                    if distance < distance_threshold:
+                        votes_same_author += 1
+                    else:
+                        votes_different_author += 1
 
-                # Get embeddings
-                embeddings = self.model.predict([img1, img2], verbose=0)
-                emb1 = embeddings[0, 0, :]
-                emb2 = embeddings[0, 1, :]
-
-                # Calculate distance
-                distance = np.linalg.norm(emb1 - emb2)
-
-                # Vote
-                if distance < distance_threshold:
-                    votes_same_author += 1
-                else:
-                    votes_different_author += 1
-
-            # Majority voting
             total_votes = votes_same_author + votes_different_author
             prediction = 1 if votes_same_author > votes_different_author else 0
 
-            # Store results
             y_true_authors.append(1)  # Ground truth: all samples are from same author
             y_pred_authors.append(prediction)
 
@@ -208,7 +197,7 @@ class ModelEvaluator:
                 {
                     "author_id": author_id,
                     "num_samples": len(samples),
-                    "num_pairs": len(pairs),
+                    "num_pairs": num_pairs,
                     "votes_same": votes_same_author,
                     "votes_different": votes_different_author,
                     "prediction": prediction,
@@ -216,17 +205,14 @@ class ModelEvaluator:
                 }
             )
 
-        # Convert to numpy arrays
         y_true_authors = np.array(y_true_authors)
         y_pred_authors = np.array(y_pred_authors)
 
-        # Calculate metrics
         accuracy = accuracy_score(y_true_authors, y_pred_authors)
         precision, recall, f1, _ = precision_recall_fscore_support(
             y_true_authors, y_pred_authors, average="binary", zero_division=0
         )
 
-        # Store results
         self.results["voting"] = {
             "accuracy": accuracy,
             "precision": precision,
@@ -239,13 +225,12 @@ class ModelEvaluator:
         }
 
         self.logger.info(f"Voting evaluation completed:")
-        self.logger.info(f"  - Authors evaluated: {len(y_true_authors)}")
+        self.logger.info(f"  - Number of authors evaluated: {len(y_true_authors)}")
         self.logger.info(f"  - Accuracy:  {accuracy:.4f}")
         self.logger.info(f"  - Precision: {precision:.4f}")
         self.logger.info(f"  - Recall:    {recall:.4f}")
         self.logger.info(f"  - F1-Score:  {f1:.4f}")
 
-        # Log some voting details
         correct_predictions = sum(1 for d in voting_details if d["prediction"] == 1)
         avg_confidence = np.mean([d["confidence"] for d in voting_details])
         self.logger.info(

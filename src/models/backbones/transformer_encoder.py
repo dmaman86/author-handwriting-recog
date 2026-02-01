@@ -1,5 +1,3 @@
-from typing import Optional
-
 import tensorflow as tf
 from tensorflow.keras import layers, models
 
@@ -21,7 +19,7 @@ class TransformerEncoder(layers.Layer):
         num_heads: int,
         ff_dim: int,
         dropout_rate: float = 0.1,
-        name: Optional[str] = None,
+        name: str | None = None,
     ) -> None:
         super().__init__(name=name)
 
@@ -43,7 +41,7 @@ class TransformerEncoder(layers.Layer):
         self.dropout1 = layers.Dropout(dropout_rate, name="dropout_attn")
         self.dropout2 = layers.Dropout(dropout_rate, name="dropout_ffn")
 
-    def call(self, inputs: tf.Tensor, training: Optional[bool] = None) -> tf.Tensor:
+    def call(self, inputs: tf.Tensor, training: bool | None = None) -> tf.Tensor:
         """
         Forward pass.
 
@@ -64,4 +62,3 @@ class TransformerEncoder(layers.Layer):
         ffn_output = self.dropout2(ffn_output, training=training)
 
         return self.norm2(out1 + ffn_output)
-

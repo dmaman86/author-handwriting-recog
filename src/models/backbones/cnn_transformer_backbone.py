@@ -41,4 +41,6 @@ class CNNTransformerBackbone(BaseBackbone):
                 name=f"transformer_encoder_{i}",
             )(x)
 
+        x = layers.GlobalAveragePooling1D(name="token_pooling")(x)
+
         return x

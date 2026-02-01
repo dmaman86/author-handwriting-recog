@@ -8,10 +8,51 @@ class BatchAugmenter:
         self._pipeline = augmentation_pipeline
 
     def augment_pairs(
-        self, X1: np.ndarray, X2: np.ndarray, y: np.ndarray
+        self,
+        X1: np.ndarray | list[np.ndarray],
+        X2: np.ndarray | list[np.ndarray],
+        y: np.ndarray,
+    ) -> tuple[np.ndarray | list[np.ndarray], np.ndarray | list[np.ndarray]]:
+        if isinstance(X1, list):
+            return self._augment_pairs_list(X1, X2, y)
+
+        return self._augment_pairs_array(X1, X2, y)
+
+    def _augment_pairs_list(
+        self,
+        X1: list[np.ndarray],
+        X2: list[np.ndarray],
+        y: np.ndarray,
+    ) -> tuple[list[np.ndarray], list[np.ndarray]]:
+        X1_aug, X2_aug = [], []
+
+        for i in range(len(X1)):
+            if y[i] == 1:
+                pair = np.stack([X1[i], X2[i]], axis=0)
+                pair_aug = self._pipeline(pair, training=True).numpy()
+                X1_aug.append(pair_aug[0])
+                X2_aug.append(pair_aug[1])
+            else:
+                X1_aug.append(
+                    self._pipeline(
+                        np.expand_dims(X1[i], axis=0), training=True
+                    ).numpy()[0]
+                )
+                X2_aug.append(
+                    self._pipeline(
+                        np.expand_dims(X2[i], axis=0), training=True
+                    ).numpy()[0]
+                )
+
+        return X1_aug, X2_aug
+
+    def _augment_pairs_array(
+        self,
+        X1: np.ndarray,
+        X2: np.ndarray,
+        y: np.ndarray,
     ) -> tuple[np.ndarray, np.ndarray]:
-        X1_aug = []
-        X2_aug = []
+        X1_aug, X2_aug = [], []
 
         positive_mask = y == 1
         if np.any(positive_mask):

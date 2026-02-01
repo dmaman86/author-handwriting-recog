@@ -1,12 +1,12 @@
 from datetime import datetime
 from pathlib import Path
+from typing import Literal
 
 import tensorflow as tf
 
 from ...io.logging import LoggerFactory
 from ..build_model import build_embedding_model
 from ..losses.binary_distance import BinaryCrossEntropyDistance
-from ..losses.contrastive_loss import ContrastiveLoss
 from ..siamese_model import build_siamese_model
 
 
@@ -70,7 +70,7 @@ class ModelTrainer:
         self.logger.info(f"Input shape: {self.input_shape}")
         self.logger.info(f"Embedding dim: {self.embedding_dim}")
 
-    def build(self) -> tf.keras.Model:
+    def build(self) -> None:
         """
         Build complete Siamese model.
         Returns:
@@ -86,7 +86,8 @@ class ModelTrainer:
         )
 
         self.siamese_model = build_siamese_model(
-            embedding_model=self.embedding_model, input_shape=self.input_shape
+            embedding_model=self.embedding_model,
+            input_shape=self.input_shape,
         )
 
         total_params = self.siamese_model.count_params()
@@ -98,11 +99,9 @@ class ModelTrainer:
         self.logger.info(f"Total params: {total_params}")
         self.logger.info(f"Trainable params: {trainable_params}")
 
-        return self.siamese_model
-
     def compile(
         self,
-        loss: BinaryCrossEntropyDistance | ContrastiveLoss | None = None,
+        loss: tf.keras.losses.Loss | None = None,
         learning_rate: float = 0.0001,
         optimizer: tf.keras.optimizers.Optimizer | None = None,
     ) -> None:

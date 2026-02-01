@@ -1,5 +1,6 @@
 import math
 import random
+from typing import Any
 
 import numpy as np
 import tensorflow as tf
@@ -102,6 +103,34 @@ class PairGenerator(tf.keras.utils.Sequence):
     def on_epoch_end(self) -> None:
         if self.shuffle:
             random.shuffle(self.authors_ids)
+
+    def get_config(self) -> dict[str, Any]:
+        return {
+            "batch_size": self.batch_size,
+            "target_size": self.target_size,
+            "positive_ratio": self.positive_ratio,
+            "shuffle": self.shuffle,
+            "seed": self.seed,
+            "num_authors": len(self.authors_ids),
+            "num_valid_authors": len(self.valid_authors),
+            "num_patches": self.num_patches,
+            "steps_per_epoch": self.steps_per_epoch,
+        }
+
+    def get_statistics(self) -> dict[str, Any]:
+        patches_per_author = [len(patches) for patches in self.data.values()]
+
+        return {
+            "total_authors": len(self.authors_ids),
+            "valid_authors": len(self.valid_authors),
+            "total_patches": self.num_patches,
+            "avg_patches_per_author": np.mean(patches_per_author),
+            "min_patches": np.min(patches_per_author),
+            "max_patches": np.max(patches_per_author),
+            "positive_pairs_per_batch": int(self.batch_size * self.positive_ratio),
+            "negative_pairs_per_batch": self.batch_size
+            - int(self.batch_size * self.positive_ratio),
+        }
 
 
 # class PairGenerator(tf.keras.utils.Sequence):
