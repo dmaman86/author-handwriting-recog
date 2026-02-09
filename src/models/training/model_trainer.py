@@ -6,8 +6,13 @@ import tensorflow as tf
 
 from ...io.logging import LoggerFactory
 from ..build_model import build_embedding_model
+from ..build_triplet_model import build_triplet_model
 from ..losses.binary_distance import BinaryCrossEntropyDistance
+from ..losses.triplet_loss import TripletLoss
 from ..siamese_model import build_siamese_model
+
+ModelType = Literal["pair", "triplet"]
+GeneratorType = tf.data.Dataset | tf.keras.utils.Sequence
 
 
 class ModelTrainer:
@@ -70,12 +75,13 @@ class ModelTrainer:
         self.logger.info(f"Input shape: {self.input_shape}")
         self.logger.info(f"Embedding dim: {self.embedding_dim}")
 
-    def build(self) -> None:
+    def build(self, model_type: ModelType = "pair") -> None:
         """
         Build complete Siamese model.
         Returns:
             Compiled Siamese model
         """
+        self.model_type = model_type
         self.logger.info("Building models...")
 
         self.embedding_model = build_embedding_model(
@@ -85,10 +91,16 @@ class ModelTrainer:
             name=f"{self.model_name}_embedding_model",
         )
 
-        self.siamese_model = build_siamese_model(
-            embedding_model=self.embedding_model,
-            input_shape=self.input_shape,
-        )
+        if model_type == "pair":
+            self.siamese_model = build_siamese_model(
+                embedding_model=self.embedding_model,
+                input_shape=self.input_shape,
+            )
+        elif model_type == "triplet":
+            self.siamese_model = build_triplet_model(
+                embedding_model=self.embedding_model,
+                input_shape=self.input_shape,
+            )
 
         total_params = self.siamese_model.count_params()
         trainable_params = sum(
@@ -135,7 +147,10 @@ class ModelTrainer:
 
         # Handle loss function
         if loss is None:
-            loss_fn = BinaryCrossEntropyDistance(scale=10.0)
+            if self.model_type == "triplet":
+                loss_fn = TripletLoss(margin=0.5)
+            else:
+                loss_fn = BinaryCrossEntropyDistance(scale=2.0)
         else:
             loss_fn = loss
 
@@ -154,9 +169,11 @@ class ModelTrainer:
 
     def train(
         self,
-        train_generator: tf.keras.utils.Sequence,
-        val_generator: tf.keras.utils.Sequence,
+        train_generator: GeneratorType,
+        val_generator: GeneratorType,
         epochs: int = 50,
+        steps_per_epoch: int | None = None,
+        validation_steps: int | None = None,
         callbacks: list | None = None,
         verbose: int = 1,
     ) -> tf.keras.callbacks.History:
@@ -174,9 +191,12 @@ class ModelTrainer:
         if self.siamese_model is None or not hasattr(self.siamese_model, "optimizer"):
             raise RuntimeError("Model must be compiled before training")
 
+        train_steps = steps_per_epoch or len(train_generator)
+        val_steps = validation_steps or len(val_generator)
+
         self.logger.info(f"Starting training for {epochs} epochs...")
-        self.logger.info(f"  - Train batches: {len(train_generator)}")
-        self.logger.info(f"  - Val batches: {len(val_generator)}")
+        self.logger.info(f"  - Train batches: {train_steps}")
+        self.logger.info(f"  - Val batches: {val_steps}")
 
         if callbacks is None:
             from .training_callbacks import get_default_callbacks
@@ -192,6 +212,8 @@ class ModelTrainer:
             train_generator,
             validation_data=val_generator,
             epochs=epochs,
+            steps_per_epoch=train_steps,
+            validation_steps=val_steps,
             callbacks=callbacks,
             verbose=verbose,
         )
@@ -201,29 +223,6 @@ class ModelTrainer:
         self._log_final_metrics()
 
         return self.history
-
-    def evaluate(self, test_generator: tf.keras.utils.Sequence) -> dict[str, float]:
-        """
-        Evaluate model on test set.
-        Args:
-            test_generator: Test data generator (PairGenerator)
-        Returns:
-            Dictionary with metrics {metric_name: value}
-        """
-        if self.siamese_model is None:
-            raise RuntimeError("Model must be compiled before evaluation")
-
-        self.logger.info("Evaluating model on test set...")
-
-        results = self.siamese_model.evaluate(
-            test_generator, return_dict=True, verbose=0
-        )
-
-        self.logger.info("Evaluation completed:")
-        for metric_name, value in results.items():
-            self.logger.info(f"     - {metric_name}: {value:.4f}")
-
-        return results
 
     def save(self, filepath: Path | str | None = None) -> None:
         """

@@ -23,7 +23,7 @@ class TripletLoss(tf.keras.losses.Loss):
     def call(
         self,
         y_true: tf.Tensor,
-        embeddings: tf.Tensor,
+        y_pred: tf.Tensor,
     ) -> tf.Tensor:
         """
         Args:
@@ -33,14 +33,14 @@ class TripletLoss(tf.keras.losses.Loss):
         Returns:
             Scalar tensor representing the triplet loss
         """
-        anchor = embeddings[:, 0, :]  # (batch_size, embedding_dim)
-        positive = embeddings[:, 1, :]  # (batch_size, embedding_dim)
-        negative = embeddings[:, 2, :]  # (batch_size, embedding_dim)
+        anchor = y_pred[:, 0, :]  # (batch_size, embedding_dim)
+        positive = y_pred[:, 1, :]  # (batch_size, embedding_dim)
+        negative = y_pred[:, 2, :]  # (batch_size, embedding_dim)
 
-        d_ap = tf.norm(anchor - positive, axis=1)
-        d_an = tf.norm(anchor - negative, axis=1)
+        pos_dist = tf.reduce_sum(tf.square(anchor - positive), axis=1)
+        neg_dist = tf.reduce_sum(tf.square(anchor - negative), axis=1)
 
-        loss = tf.maximum(d_ap - d_an + self.margin, 0.0)
+        loss = tf.maximum(pos_dist - neg_dist + self.margin, 0.0)
         return tf.reduce_mean(loss)
 
     def get_config(self) -> dict[str, Any]:

@@ -1,89 +1,55 @@
-import math
-import random
-
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras import layers
 
-from .augmentation.augmentation_builder import AugmentationBuilder
-from .augmentation.batch_augmenter import BatchAugmenter
-from .transforms.batch_resizer import BatchResizer
+from .base_generator import BaseGenerator
+from .data.split_data import SplitData
 
 
-class DataGenerator(tf.keras.utils.Sequence):
+class DataGenerator(BaseGenerator):
 
     def __init__(
         self,
-        data: dict[int, list[np.ndarray]],
+        data: SplitData,
         batch_size: int = 32,
         target_size: tuple[int, int] = (60, 53),
         shuffle: bool = True,
+        use_augmentation: bool = False,
         seed: int | None = None,
-        **kwargs,
     ) -> None:
-        super().__init__(**kwargs)
-        self.data = data
-        self.batch_size: int = batch_size
-        self.target_size = target_size
-        self.shuffle: bool = shuffle
-        self.seed: int | None = seed
+        super().__init__(
+            data=data,
+            batch_size=batch_size,
+            target_size=target_size,
+            shuffle=shuffle,
+            use_augmentation=use_augmentation,
+            seed=seed,
+        )
 
-        if seed is not None:
-            np.random.seed(seed)
+        self.indices = np.arange(self.num_patches)
 
-        self.resizer = BatchResizer(target_size)
+    def _generator(self):
+        while True:
+            for i in range(self.steps_per_epoch):
+                batch_idx = self.indices[
+                    i * self.batch_size : (i + 1) * self.batch_size
+                ]
+                X = self._normalize_batch(self.X[batch_idx])
+                y = self.y[batch_idx]
 
-        self.samples: list[tuple[np.ndarray, int]] = []
-        for author_id, patches in data.items():
-            for p in patches:
-                self.samples.append((p, author_id))
+                if self.augmenter is not None:
+                    X = self.augmenter.augment_batch(X)
 
-        self.indices = np.arange(len(self.samples))
+                X = self.resizer.resize(X)
 
-        self.on_epoch_end()
+                yield X, y
 
-    def __len__(self) -> int:
-        return math.ceil(len(self.samples) / self.batch_size)
+            self.on_epoch_end()
+            if self.shuffle:
+                np.random.shuffle(self.indices)
 
-    def __getitem__(self, index: int) -> tuple[np.ndarray, np.ndarray]:
-        batch_idx = self.indices[
-            index * self.batch_size : (index + 1) * self.batch_size
-        ]
-        X, y = [], []
-        for i in batch_idx:
-            patch, author_id = self.samples[i]
-
-            patch = self._normalize_patch(patch)
-
-            X.append(patch)
-            y.append(author_id)
-
-        X = np.stack(X, axis=0)
-        y = np.array(y, dtype=np.int32)
-
-        X = self.resizer.resize(X)
-
-        return X, y
-
-    def _normalize_patch(self, patch: np.ndarray) -> np.ndarray:
-        patch = np.asarray(patch)
-
-        if patch.ndim == 2:
-            patch = patch[..., np.newaxis]  # -> (H, W, 1)
-
-        elif patch.ndim == 3:
-            if patch.shape[0] == 1:
-                patch = np.transpose(patch, (1, 2, 0))  # (1, H, W) -> (H, W, 1)
-
-            if patch.shape[-1] != 1:
-                patch = patch[..., :1]
-
-        else:
-            raise ValueError(f"Invalid patch shape: {patch.shape}")
-
-        return patch.astype(np.float32)
-
-    def on_epoch_end(self) -> None:
-        if self.shuffle:
-            random.shuffle(self.samples)
-
+    def _output_signature(self) -> tuple:
+        h, w = self.target_size
+        return (
+            tf.TensorSpec(shape=(None, h, w, 1), dtype=tf.float32),
+            tf.TensorSpec(shape=(None,), dtype=tf.int32),
+        )

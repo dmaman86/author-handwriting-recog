@@ -7,7 +7,7 @@ class BinaryCrossEntropyDistance(tf.keras.losses.Loss):
 
     def __init__(
         self,
-        scale: float = 10.0,
+        scale: float = 2.0,
         name: str = "binary_cross_entropy_distance",
     ) -> None:
         """
@@ -51,4 +51,3 @@ class BinaryCrossEntropyDistance(tf.keras.losses.Loss):
         config: dict[str, Any] = super().get_config()
         config.update({"scale": self.scale})
         return config
-

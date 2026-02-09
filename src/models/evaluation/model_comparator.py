@@ -9,7 +9,7 @@ import numpy as np
 import tensorflow as tf
 
 from ...io.logging import LoggerFactory
-from .model_evaluator import ModelEvaluator
+from .model_evaluator import ModelEvaluator, ThresholdStrategy
 
 
 class ModelComparator:
@@ -40,14 +40,21 @@ class ModelComparator:
         self.logger.info(f"Comparator initialized with {len(evaluators_dict)} models")
 
     def evaluate_all(
-        self, test_generator: tf.keras.utils.Sequence, distance_threshold: float = 1.0
+        self,
+        test_generator: tf.keras.utils.Sequence,
+        distance_threshold: float | None = None,
+        threshold_strategy: ThresholdStrategy = "youden",
     ) -> dict[str, dict[str, float]]:
         """
         Evaluate all models on the same generator using pair-level evaluation.
 
         Args:
             test_generator: Test data generator (PairGenerator)
-            distance_threshold: Threshold for binary classification
+            distance_threshold: Threshold for binary classification.
+                If None, each model finds its own optimal threshold
+                using ``threshold_strategy``.
+            threshold_strategy: Strategy for automatic threshold search.
+                See ``ModelEvaluator.evaluate`` for details.
 
         Returns:
             Nested dictionary: {model_name: {metric: value, ...}, ...}
@@ -57,7 +64,9 @@ class ModelComparator:
         for name, evaluator in self.evaluators.items():
             self.logger.info(f"\nEvaluating: {name}")
             results = evaluator.evaluate(
-                test_generator=test_generator, distance_threshold=distance_threshold
+                test_generator=test_generator,
+                distance_threshold=distance_threshold,
+                threshold_strategy=threshold_strategy,
             )
             self.results[name] = results
 

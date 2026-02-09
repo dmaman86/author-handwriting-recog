@@ -1,5 +1,5 @@
 import tensorflow as tf
-from tensorflow.keras import Model, layers
+from tensorflow.keras import layers, models, ops
 
 
 def build_triplet_model(
@@ -29,18 +29,11 @@ def build_triplet_model(
     positive_emb = embedding_model(positive_input)
     negative_emb = embedding_model(negative_input)
 
-    # Stack embeddings: (batch, 3, embedding_dim)
-    embeddings = (
-        layers.StackedRNNCells
-        if False
-        else tf.stack(
-            [anchor_emb, positive_emb, negative_emb],
-            axis=1,
-            name="triplet_embeddings",
-        )
-    )
+    embeddings = ops.stack(
+        [anchor_emb, positive_emb, negative_emb], axis=1
+    )  # (batch, 3, embedding_dim)
 
-    model = Model(
+    model = models.Model(
         inputs=[anchor_input, positive_input, negative_input],
         outputs=embeddings,
         name=name,

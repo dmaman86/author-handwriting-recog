@@ -31,7 +31,7 @@ Quick Start:
 from .datasets import (AuthorDatasetBuilder, AuthorPartitionState,
                        DataGenerator, DataInitializer, PairDataset,
                        PairGenerator, PairIndexSampler, PatchNormalizer,
-                       SelectiveDataLoader, SubsetBuilder)
+                       SelectiveDataLoader, SubsetBuilder, TripletGenerator)
 # Re-export main classes for convenience
 from .io import (FileSystem, ImageAnalyzer, ImageTransformer, PatchExtractor,
                  load, save)
@@ -65,6 +65,7 @@ __all__ = [
     "SubsetBuilder",
     "PairGenerator",
     "DataGenerator",
+    "TripletGenerator",
     "PairIndexSampler",
     "PairDataset",
     "DataInitializer",

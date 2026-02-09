@@ -1,8 +1,9 @@
-import numpy as np
 import gc
-from typing import Union
 from collections.abc import Callable
+
+import numpy as np
 from tqdm import tqdm
+
 
 class SelectiveDataLoader:
     def __init__(self, dataset_path: str, load_fn: Callable[[str], dict]) -> None:
@@ -15,112 +16,113 @@ class SelectiveDataLoader:
 
         self.num_authors = dataset["num_authors"]
         self.author_names = dataset["author_names"]
-        
+
         # FIX: Normalizar author_indices keys a int
         # Zarr serializa dict keys como strings
         author_indices = dataset["author_indices"]
         self.author_indices = {}
-        for split in ['train', 'validation', 'test']:
+        for split in ["train", "validation", "test"]:
             if split in author_indices:
                 self.author_indices[split] = {
                     int(k): v for k, v in author_indices[split].items()
                 }
             else:
                 self.author_indices[split] = {}
-        
+
         self.patch_shape = dataset["patch_shape"]
         self.metadata = dataset["metadata"]
 
         del dataset
         gc.collect()
 
-    def load_dataset_by_authors(
-            self, 
-            authors_id: list[int] | range,
-            show_progress_bar: bool = False) -> dict:
-        if isinstance(authors_id, range):
-            authors_id = list(authors_id)
-
-        # Load dataset
-        dataset = self.load_fn(self.dataset_path)
-        partition = dataset['partition']
-        author_indices = dataset['author_indices']
-        
-        # FIX: Normalizar author_indices keys a int
-        # Zarr puede serializar keys como strings
-        author_indices_normalized = {}
-        for split in ['train', 'validation', 'test']:
-            if split in author_indices:
-                author_indices_normalized[split] = {
-                    int(k): v for k, v in author_indices[split].items()
-                }
-            else:
-                author_indices_normalized[split] = {}
-        
-        author_indices = author_indices_normalized
-
+    def build_author_maps(
+        self, authors_id: list[int]
+    ) -> tuple[dict[int, int], dict[int, int], list[str]]:
         global_to_local = {
             global_id: local_id for local_id, global_id in enumerate(authors_id)
         }
-
         local_to_global = {
             local_id: global_id for global_id, local_id in global_to_local.items()
         }
+        author_names = [
+            self.author_names[local_to_global[i]] for i in range(len(authors_id))
+        ]
+        return global_to_local, local_to_global, author_names
 
-        total_steps = len(authors_id) * 3
-        pbar = (
-            tqdm(total=total_steps, desc="Building subset dataset")
-            if show_progress_bar
-            else None
-        )
+    def load_split_by_authors(
+        self,
+        split: str,
+        authors_id: list[int],
+        global_to_local: dict[int, int],
+        show_progress_bar: bool = False,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        dataset = self.load_fn(self.dataset_path)
+        partition = dataset["partition"]
+        author_indices = dataset["author_indices"]
 
-        def build_split(split: str) -> tuple[np.ndarray, np.ndarray]:
-            X: list[np.ndarray] = []
-            y: list[int] = []
+        if split in author_indices:
+            split_indices = {int(k): v for k, v in author_indices[split].items()}
+        else:
+            split_indices = {}
 
-            for global_id in authors_id:
-                if global_id not in author_indices[split]:
-                    if pbar:
-                        pbar.update(1)
-                    continue
-                    
-                start, end = author_indices[split][global_id]
-                patches = partition[split][start:end]
-
-                local_id = global_to_local[global_id]
-                X.extend(patches)
-                y.extend([local_id] * len(patches))
-
-                if pbar:
-                    pbar.update(1)
-
-            return np.array(X), np.array(y)
-        
-        X_train, y_train = build_split('train')
-        X_validation, y_validation = build_split('validation')
-        X_test, y_test = build_split('test')
-
-        if pbar:
-            pbar.close()
-
-        del dataset, partition, author_indices
+        del dataset, author_indices
         gc.collect()
 
-        return {
-            'train': (X_train, y_train),
-            'validation': (X_validation, y_validation),
-            'test': (X_test, y_test),
-            'num_authors': len(authors_id),
-            'author_names': [self.author_names[local_to_global[i]] for i in range(len(authors_id))],
-            'patch_shape': self.patch_shape,
-            'metadata': self.metadata,
-            'global_to_local': global_to_local,
-            'local_to_global': local_to_global,
-        }
-    
+        X: list[np.ndarray] = []
+        y: list[int] = []
+
+        iterator = (
+            tqdm(authors_id, desc=f"Loading {split}")
+            if show_progress_bar
+            else authors_id
+        )
+
+        for global_id in iterator:
+            if global_id not in split_indices:
+                continue
+            start, end = split_indices[global_id]
+            patches = partition[split][start:end]
+
+            local_id = global_to_local[global_id]
+            X.extend(patches)
+            y.extend([local_id] * len(patches))
+
+        del partition, split_indices
+        gc.collect()
+
+        return np.array(X), np.array(y)
+
+    def load_dataset_by_authors(
+        self, authors_id: list[int] | range, show_progress_bar: bool = False
+    ) -> dict:
+        if isinstance(authors_id, range):
+            authors_id = list(authors_id)
+
+        global_to_local, local_to_global, author_names = self.build_author_maps(
+            authors_id
+        )
+
+        result = {}
+        for split in ["train", "validation", "test"]:
+            result[split] = self.load_split_by_authors(
+                split=split,
+                authors_id=authors_id,
+                global_to_local=global_to_local,
+                show_progress_bar=show_progress_bar,
+            )
+
+        result["num_authors"] = len(authors_id)
+        result["author_names"] = author_names
+        result["patch_shape"] = self.patch_shape
+        result["metadata"] = self.metadata
+        result["global_to_local"] = global_to_local
+        result["local_to_global"] = local_to_global
+
+        return result
+
     def get_author_info(self, author_id: int) -> dict:
         self._validate_author_id(author_id)
-        
+
         info = {
             "author_id": author_id,
             "author_name": self.author_names[author_id],
@@ -136,7 +138,7 @@ class SelectiveDataLoader:
 
         info["num_patches"]["total"] = sum(info["num_patches"].values())
         return info
-    
+
     def get_author_name(self, label_id: int) -> str:
         self._validate_author_id(label_id)
         return self.author_names[label_id]
@@ -152,10 +154,10 @@ class SelectiveDataLoader:
 
     def list_authors(self) -> list[tuple[int, str]]:
         return [(i, name) for i, name in enumerate(self.author_names)]
-    
+
     def _validate_author_id(self, author_id: int) -> None:
         if author_id < 0 or author_id >= self.num_authors:
             raise IndexError(
-                f"Author ID {author_id} out of range "
-                f"[0, {self.num_authors - 1}]"
+                f"Author ID {author_id} out of range " f"[0, {self.num_authors - 1}]"
             )
+

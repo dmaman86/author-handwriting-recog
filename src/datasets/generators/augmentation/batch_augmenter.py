@@ -7,6 +7,9 @@ class BatchAugmenter:
     def __init__(self, augmentation_pipeline: tf.keras.Sequential) -> None:
         self._pipeline = augmentation_pipeline
 
+    def augment_batch(self, X: np.ndarray) -> np.ndarray:
+        return self._pipeline(X, training=True).numpy()
+
     def augment_pairs(
         self,
         X1: np.ndarray | list[np.ndarray],

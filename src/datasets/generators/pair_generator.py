@@ -1,71 +1,60 @@
-import math
 import random
 from typing import Any
 
 import numpy as np
 import tensorflow as tf
 
-from .augmentation.augmentation_builder import AugmentationBuilder
-from .augmentation.batch_augmenter import BatchAugmenter
-from .transforms.batch_resizer import BatchResizer
+from .base_generator import BaseGenerator
+from .data.split_data import SplitData
 
 
-class PairGenerator(tf.keras.utils.Sequence):
+class PairGenerator(BaseGenerator):
 
     def __init__(
         self,
-        data: dict[int, list[np.ndarray]],
-        authors_ids: list[int],
-        valid_authors: list[int],
+        data: SplitData,
         batch_size: int = 32,
         target_size: tuple[int, int] = (60, 53),
         positive_ratio: float = 0.5,
         shuffle: bool = True,
         use_augmentation: bool = True,
         seed: int | None = None,
-        **kwargs
     ) -> None:
-        super().__init__(**kwargs)
+        super().__init__(
+            data=data,
+            batch_size=batch_size,
+            target_size=target_size,
+            shuffle=shuffle,
+            use_augmentation=use_augmentation,
+            seed=seed,
+        )
 
-        self.data = data
-        self.authors_ids = authors_ids
-        self.valid_authors = valid_authors
-        self.batch_size = batch_size
-        self.target_size = target_size
         self.positive_ratio = positive_ratio
-        self.shuffle = shuffle
-        self.seed = seed
 
-        if seed is not None:
-            random.seed(seed)
-            np.random.seed(seed)
-            tf.random.set_seed(seed)
+    def _generator(self):
+        while True:
+            for _ in range(self.steps_per_epoch):
+                X1, X2, y = self._generate_pairs()
+                X1 = self._normalize_batch(X1)
+                X2 = self._normalize_batch(X2)
 
-        self.augmenter = None
-        if use_augmentation:
-            pipeline = AugmentationBuilder.build_default(seed)
-            self.augmenter = BatchAugmenter(pipeline)
+                if self.augmenter is not None:
+                    X1, X2 = self.augmenter.augment_pairs(X1, X2, y)
 
-        self.resizer = BatchResizer(target_size)
+                X1 = self.resizer.resize(X1)
+                X2 = self.resizer.resize(X2)
 
-        self.num_patches = sum(len(patches) for patches in self.data.values())
-        self.steps_per_epoch = math.ceil(self.num_patches / self.batch_size)
+                yield (X1, X2), y
 
-    def __len__(self) -> int:
-        return self.steps_per_epoch
+            self.on_epoch_end()
 
-    def __getitem__(
-        self, index: int
-    ) -> tuple[tuple[np.ndarray, np.ndarray], np.ndarray]:
-        X1, X2, y = self._generate_pairs()
-
-        if self.augmenter is not None:
-            X1, X2 = self.augmenter.augment_pairs(X1, X2, y)
-
-        X1 = self.resizer.resize(X1)
-        X2 = self.resizer.resize(X2)
-
-        return (X1, X2), y
+    def _output_signature(self) -> tuple:
+        h, w = self.target_size
+        img_spec = tf.TensorSpec(shape=(None, h, w, 1), dtype=tf.float32)
+        return (
+            (img_spec, img_spec),
+            tf.TensorSpec(shape=(None,), dtype=tf.float32),
+        )
 
     def _generate_pairs(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
 
@@ -78,59 +67,36 @@ class PairGenerator(tf.keras.utils.Sequence):
 
         for _ in range(num_positive):
             author_id = random.choice(self.valid_authors)
-            patches = self.data[author_id]
-            p1, p2 = random.sample(patches, 2)
+            start, end = self.author_index[author_id]
+            idx1, idx2 = random.sample(range(start, end), 2)
 
-            batch_x1.append(p1)
-            batch_x2.append(p2)
+            batch_x1.append(self.X[idx1])
+            batch_x2.append(self.X[idx2])
             batch_y.append(1)
 
         for _ in range(num_negative):
             a1, a2 = random.sample(self.authors_ids, 2)
-            p1 = random.choice(self.data[a1])
-            p2 = random.choice(self.data[a2])
+            s1, e1 = self.author_index[a1]
+            s2, e2 = self.author_index[a2]
 
-            batch_x1.append(p1)
-            batch_x2.append(p2)
+            batch_x1.append(self.X[random.randint(s1, e1 - 1)])
+            batch_x2.append(self.X[random.randint(s2, e2 - 1)])
             batch_y.append(0)
 
-        X1 = np.array(batch_x1, dtype=np.float32)
-        X2 = np.array(batch_x2, dtype=np.float32)
+        X1 = np.stack(batch_x1)
+        X2 = np.stack(batch_x2)
         y = np.array(batch_y, dtype=np.float32)
 
         return X1, X2, y
 
-    def on_epoch_end(self) -> None:
-        if self.shuffle:
-            random.shuffle(self.authors_ids)
-
     def get_config(self) -> dict[str, Any]:
-        return {
-            "batch_size": self.batch_size,
-            "target_size": self.target_size,
-            "positive_ratio": self.positive_ratio,
-            "shuffle": self.shuffle,
-            "seed": self.seed,
-            "num_authors": len(self.authors_ids),
-            "num_valid_authors": len(self.valid_authors),
-            "num_patches": self.num_patches,
-            "steps_per_epoch": self.steps_per_epoch,
-        }
-
-    def get_statistics(self) -> dict[str, Any]:
-        patches_per_author = [len(patches) for patches in self.data.values()]
-
-        return {
-            "total_authors": len(self.authors_ids),
-            "valid_authors": len(self.valid_authors),
-            "total_patches": self.num_patches,
-            "avg_patches_per_author": np.mean(patches_per_author),
-            "min_patches": np.min(patches_per_author),
-            "max_patches": np.max(patches_per_author),
-            "positive_pairs_per_batch": int(self.batch_size * self.positive_ratio),
-            "negative_pairs_per_batch": self.batch_size
-            - int(self.batch_size * self.positive_ratio),
-        }
+        config = super().get_config()
+        config["positive_ratio"] = self.positive_ratio
+        config["positive_pairs_per_batch"] = int(self.batch_size * self.positive_ratio)
+        config["negative_pairs_per_batch"] = self.batch_size - int(
+            self.batch_size * self.positive_ratio
+        )
+        return config
 
 
 # class PairGenerator(tf.keras.utils.Sequence):
