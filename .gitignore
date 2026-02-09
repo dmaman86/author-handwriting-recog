@@ -7,6 +7,7 @@ data/datasets/*.zip
 *.h5
 *.npy
 *.npz
+*.keras
 
 .vscode/
 .conda/
