@@ -21,28 +21,39 @@ class DeepCNNBackbone(BaseBackbone):
             Feature map tensor (batch, H', W', C)
         """
 
-        x = layers.Conv2D(96, 3, padding="same")(inputs)
+        # Block 1 - Conv(96, 5x5, stride=2)
+        x = layers.Conv2D(96, kernel_size=5, strides=2, padding="same", use_bias=False)(
+            inputs
+        )
         x = layers.BatchNormalization()(x)
         x = layers.ReLU()(x)
-        x = layers.MaxPooling2D()(x)
+        x = layers.MaxPooling2D(pool_size=3, strides=2, padding="same")(x)
 
-        x = layers.Conv2D(256, 3, padding="same")(x)
-        x = layers.BatchNormalization()(x)
-        x = layers.ReLU()(x)
-        x = layers.MaxPooling2D()(x)
-
-        x = layers.Conv2D(384, 3, padding="same")(x)
-        x = layers.BatchNormalization()(x)
-        x = layers.ReLU()(x)
-        x = layers.MaxPooling2D()(x)
-
-        x = layers.Conv2D(384, 3, padding="same")(x)
+        # Block 2 - Conv(128) x 2
+        x = layers.Conv2D(128, 3, padding="same", use_bias=False)(x)
         x = layers.BatchNormalization()(x)
         x = layers.ReLU()(x)
 
-        x = layers.Conv2D(256, 3, padding="same")(x)
+        x = layers.Conv2D(128, 3, padding="same", use_bias=False)(x)
         x = layers.BatchNormalization()(x)
         x = layers.ReLU()(x)
-        x = layers.MaxPooling2D()(x)
+
+        x = layers.MaxPooling2D(pool_size=2)(x)
+
+        # Block 3 - Conv(256) x 2
+        x = layers.Conv2D(256, 3, padding="same", use_bias=False)(x)
+        x = layers.BatchNormalization()(x)
+        x = layers.ReLU()(x)
+
+        x = layers.Conv2D(256, 3, padding="same", use_bias=False)(x)
+        x = layers.BatchNormalization()(x)
+        x = layers.ReLU()(x)
+
+        x = layers.MaxPooling2D(pool_size=2)(x)
+
+        # Block 4 - Conv(512)
+        x = layers.Conv2D(512, 3, padding="same", use_bias=False)(x)
+        x = layers.BatchNormalization()(x)
+        x = layers.ReLU()(x)
 
         return x

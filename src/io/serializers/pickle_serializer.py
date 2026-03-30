@@ -1,8 +1,9 @@
 import pickle
 from pathlib import Path
 
+from ..exceptions import DeserializationError, SerializationError
 from .base_serializer import BaseSerializer
-from ..exceptions import SerializationError, DeserializationError
+
 
 class PickleSerializer(BaseSerializer):
     """Serializer for Python pickle files."""
@@ -19,8 +20,10 @@ class PickleSerializer(BaseSerializer):
         except (pickle.PicklingError, TypeError) as e:
             raise SerializationError(f"Failed to pickle data: {e}") from e
         except OSError as e:
-            raise SerializationError(f"Failed to write pickle to {file_path}: {e}") from e
-        
+            raise SerializationError(
+                f"Failed to write pickle to {file_path}: {e}"
+            ) from e
+
     def load(self, file_path: str | Path):
         p = self.fs.ensure_file_exists(file_path)  # Propaga FileNotFoundError
         try:
@@ -30,4 +33,3 @@ class PickleSerializer(BaseSerializer):
             raise DeserializationError(f"Failed to unpickle {p}: {e}") from e
         except OSError as e:
             raise DeserializationError(f"Failed to read pickle from {p}: {e}") from e
-

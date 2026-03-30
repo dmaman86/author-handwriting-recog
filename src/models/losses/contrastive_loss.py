@@ -1,38 +1,68 @@
-from typing import Any
+from typing import Any, Literal
 
 import tensorflow as tf
 
 
 class ContrastiveLoss(tf.keras.losses.Loss):
+    """
+    Contrastive loss for Siamese networks.
+    L = y * d^2 + (1-y) * max(margin - d, 0)^2
+    """
 
-    def __init__(self, margin: float = 1.0, name: str = "contrastive_loss") -> None:
+    def __init__(
+        self,
+        margin: float = 1.0,
+        distance: Literal["euclidean", "cosine"] = "euclidean",
+        name: str = "contrastive_loss",
+    ) -> None:
         super().__init__(name=name)
         self.margin = margin
+        self.distance = distance
 
-    def call(self, y_true: tf.Tensor, embeddings: tf.Tensor) -> tf.Tensor:
+    def _distance(self, a: tf.Tensor, b: tf.Tensor) -> tf.Tensor:
+        if self.distance == "euclidean":
+            return tf.linalg.norm(a - b, axis=1)
+        elif self.distance == "cosine":
+            similarity = tf.reduce_sum(a * b, axis=1)
+            return 1.0 - similarity
+        else:
+            raise ValueError(f"Unsupported distance type: {self.distance}")
+
+    def call(self, y_true: tf.Tensor, y_pred: tf.Tensor) -> tf.Tensor:
         """
+        Computes contrastive loss for pair embeddings.
+
         Args:
-            y_true: Tensor of shape (batch_size,)
-                    1.0 for positive pairs, 0.0 for negative pairs
-            embeddings: Tensor of shape (batch_size, 2, embedding_dim)
+            y_true: Stacked tensor of shape (batch_size, 3) from generator:
+                   [:, 0] = pair_labels (1.0 = same class, 0.0 = different class)
+                   [:, 1] = img1_labels (author_id as float32, unused by this loss)
+                   [:, 2] = img2_labels (author_id as float32, unused by this loss)
+            y_pred: Embeddings stacked as (batch_size, 2, embedding_dim)
 
         Returns:
-            Scalar tensor representing the contrastive loss
+            Contrastive loss per sample
         """
+        # Extract only pair_labels from column 0
+        # y_true shape: (batch_size, 3)
+        # pair_labels shape: (batch_size,)
+        pair_labels = y_true[:, 0]
 
-        emb1: tf.Tensor = embeddings[:, 0, :]  # (batch_size, embedding_dim)
-        emb2: tf.Tensor = embeddings[:, 1, :]  # (batch_size, embedding_dim)
+        emb1: tf.Tensor = y_pred[:, 0, :]  # (batch_size, embedding_dim)
+        emb2: tf.Tensor = y_pred[:, 1, :]  # (batch_size, embedding_dim)
 
-        distances: tf.Tensor = tf.norm(emb1 - emb2, axis=1)
-        positive_loss: tf.Tensor = y_true * tf.square(distances)
-        negative_loss: tf.Tensor = (1 - y_true) * tf.square(
-            tf.maximum(self.margin - distances, 0)
+        d = self._distance(emb1, emb2)
+        positive_loss: tf.Tensor = pair_labels * tf.square(d)
+        negative_loss: tf.Tensor = (1 - pair_labels) * tf.square(
+            tf.maximum(self.margin - d, 0)
         )
-        loss: tf.Tensor = tf.reduce_mean(positive_loss + negative_loss)
-        return loss
+        return positive_loss + negative_loss
 
     def get_config(self) -> dict[str, Any]:
         config = super().get_config()
-        config.update({"margin": self.margin})
+        config.update(
+            {
+                "margin": self.margin,
+                "distance": self.distance,
+            }
+        )
         return config
-

@@ -3,14 +3,13 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from ..exceptions import DeserializationError, SerializationError
 from .base_serializer import BaseSerializer
-from ..exceptions import SerializationError, DeserializationError
 
 
 class ImageSerializer(BaseSerializer):
     """
     Serializer for image files using OpenCV.
-    
     Supports common image formats: PNG, JPG, JPEG, BMP, TIFF.
     Automatically handles RGB to BGR conversion for OpenCV compatibility.
     """
@@ -21,12 +20,10 @@ class ImageSerializer(BaseSerializer):
     def save(self, directory: str | Path, data: np.ndarray, filename: str) -> None:
         """
         Save image data to file.
-        
         Args:
             directory: Directory path where to save the image
             data: Image data as numpy array
             filename: Name of the file to save
-            
         Raises:
             SerializationError: If image save fails
         """
@@ -48,13 +45,13 @@ class ImageSerializer(BaseSerializer):
     def load(self, file_path: str | Path) -> np.ndarray:
         """
         Load image from file.
-        
+
         Args:
             file_path: Path to the image file
-            
+
         Returns:
             Image data as numpy array (BGR format)
-            
+
         Raises:
             FileNotFoundError: If file does not exist
             DeserializationError: If image load fails
@@ -65,6 +62,9 @@ class ImageSerializer(BaseSerializer):
             image = cv2.imread(str(p))
             if image is None:
                 raise DeserializationError(f"Failed to load image from {p}")
+            # Convert BGR to RGB
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             return image
         except Exception as e:
             raise DeserializationError(f"Error loading image from {p}: {e}")
+

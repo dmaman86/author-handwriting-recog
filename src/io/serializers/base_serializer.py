@@ -18,10 +18,10 @@ class BaseSerializer(ABC):
     - Use injected FileSystem for file operations
     """
 
-    def __init__(self, file_system: 'FileSystem'):
+    def __init__(self, file_system: "FileSystem"):
         """
         Initialize serializer with file system dependency.
-        
+
         Args:
             file_system: FileSystem instance for file operations
         """
@@ -33,18 +33,18 @@ class BaseSerializer(ABC):
         with the SerializerFactory when the class is defined.
         """
         super().__init_subclass__(**kwargs)
-        
+
         # Avoid registering abstract intermediate classes
-        if not getattr(cls, '__abstractmethods__', None):
+        if not getattr(cls, "__abstractmethods__", None):
             # Lazy import to avoid circular dependency
             from .serializer_factory import SerializerFactory
+
             SerializerFactory.register(cls)
 
     @abstractmethod
     def extensions(self) -> list[str]:
         """
         Return list of file extensions this serializer handles.
-        
         Returns:
             List of extensions (e.g., ['.json', '.txt'])
         """
@@ -81,4 +81,3 @@ class BaseSerializer(ABC):
         Helper method: convert any path input to a Path object.
         """
         return self.fs.to_path(path)
-

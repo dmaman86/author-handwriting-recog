@@ -1,8 +1,5 @@
 data/raw/
-data/datasets/patches/
-data/datasets/*.pkl
-data/datasets/*.tar.gz
-data/datasets/*.zip
+data/datasets/
 
 *.h5
 *.npy
@@ -51,3 +48,6 @@ venv.bak/
 
 # PyCharm
 .idea/
+
+# Claude Code
+.claude/

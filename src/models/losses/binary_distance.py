@@ -25,14 +25,25 @@ class BinaryCrossEntropyDistance(tf.keras.losses.Loss):
         embeddings: tf.Tensor,
     ) -> tf.Tensor:
         """
+        Compute binary cross-entropy loss from embedding distances.
+
         Args:
-            y_true: Tensor of shape (batch_size,)
-                    1.0 for positive pairs, 0.0 for negative pairs
+            y_true: Stacked tensor of shape (batch_size, 3) from generator:
+                   [:, 0] = pair_labels (1.0 = same class, 0.0 = different class)
+                   [:, 1] = img1_labels (author_id as float32, unused by this loss)
+                   [:, 2] = img2_labels (author_id as float32, unused by this loss)
             embeddings: Tensor of shape (batch_size, 2, embedding_dim)
 
         Returns:
             Scalar loss value
+
+        Note:
+            The loss only uses pair_labels (column 0). Author ID labels (columns 1-2)
+            are ignored - they're only used by evaluators for per-author metrics.
         """
+        # Extract only pair_labels from column 0
+        pair_labels = y_true[:, 0]
+
         emb1: tf.Tensor = embeddings[:, 0, :]
         emb2: tf.Tensor = embeddings[:, 1, :]
 
@@ -44,7 +55,7 @@ class BinaryCrossEntropyDistance(tf.keras.losses.Loss):
         # Convert distance to similarity logit
         logits: tf.Tensor = -self.scale * distances
 
-        loss: tf.Tensor = self._bce(y_true, logits)
+        loss: tf.Tensor = self._bce(pair_labels, logits)
         return loss
 
     def get_config(self) -> dict[str, Any]:

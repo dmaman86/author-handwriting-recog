@@ -15,8 +15,6 @@ Note: For end-users, import from parent module:
 """
 
 from .base_serializer import BaseSerializer
-from .serializer_factory import SerializerFactory
-
 # Import all serializers to trigger auto-registration via metaclass
 from .image_serializer import ImageSerializer
 from .json_serializer import JsonSerializer
@@ -24,7 +22,8 @@ from .keras_serializer import KerasSerializer
 from .mat_serializer import MatSerializer
 from .npy_serializer import NpySerializer
 from .pickle_serializer import PickleSerializer
-from .zarr_serializer import ZarrSerializer
+from .serializer_factory import SerializerFactory
+from .zarr_serializer import ZarrArrayWrapper, ZarrSerializer
 
 # Re-export factory methods as module-level convenience functions
 save = SerializerFactory.save
@@ -51,4 +50,6 @@ __all__ = [
     "NpySerializer",
     "PickleSerializer",
     "ZarrSerializer",
+    "ZarrArrayWrapper",
 ]
+
