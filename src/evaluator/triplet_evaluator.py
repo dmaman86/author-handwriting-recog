@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -8,7 +7,6 @@ from sklearn.metrics import roc_auc_score
 
 from ..generators import TripletGenerator
 from ..io import LoggerFactory
-from ..training import TripletTrainer
 
 TripletIdxs = tuple[tf.Tensor, tf.Tensor, tf.Tensor]
 TripletLabels = tuple[tf.Tensor, tf.Tensor, tf.Tensor]
@@ -44,21 +42,12 @@ class TripletEvaluator:
 
     def __init__(
         self,
-        model: TripletTrainer,
+        siamese_network: tf.keras.Model,
         logger: LoggerFactory,
         generator: TripletGenerator | None = None,
     ) -> None:
 
-        if model.siamese_network is None:
-            raise ValueError(
-                "Model's siamese network is not built yet. "
-                "Please build the model before evaluating."
-            )
-
-        if not isinstance(model.siamese_network, tf.keras.Model):
-            raise TypeError("siamese_network must be a tf.keras.Model")
-
-        self.siamese_network = model.siamese_network
+        self.siamese_network = siamese_network
         self.data_generator = generator
 
         self.logger = logger

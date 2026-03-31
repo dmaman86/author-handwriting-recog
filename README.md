@@ -12,14 +12,14 @@ The system learns an embedding space where patches from the same author cluster 
 
 | Strategy   | Aggregation | Accuracy |
 |------------|-------------|----------|
-| 1-NN       | vote        | ~100%    |
-| Top-K      | vote        | ~99.5%   |
-| Centroid   | vote        | ~90.2%   |
-| Mean       | vote        | ~57.8%   |
+| 1-NN       | vote        | 100.00%  |
+| Top-K      | vote        | 99.51%   |
+| Centroid   | vote        | 91.67%   |
+| Mean       | vote        | 57.84%   |
 
 Embedding quality (cosine distance):
-- Intra-author distance: **0.354**
-- Inter-author distance: **0.974**
+- Intra-author distance: **0.3546**
+- Inter-author distance: **0.9753**
 
 ---
 
@@ -39,11 +39,13 @@ src/
 ├── models/
 │   ├── backbones/         # MobileNetV2, EfficientNet, DeepCNN
 │   ├── losses/            # TripletLoss, ContrastiveLoss, BinaryDistance
-│   ├── layers.py
-│   ├── embedding_network.py
-│   ├── siamese_pair_model.py
-│   ├── siamese_triplet_model.py
-│   └── siamese_factory.py
+│   ├── layers/            # CosineDistance, CosineSimilarity, EuclideanDistance, L2Normalization
+│   ├── siamese/
+│   │   ├── base_siamese_builder.py   # abstract builder, owns embedding_model
+│   │   ├── siamese_pair_builder.py
+│   │   ├── siamese_triplet_builder.py
+│   │   └── siamese_factory.py        # registry: "pair" | "triplet"
+│   └── embedding_network.py
 ├── training/
 │   ├── base_metric_trainer.py
 │   ├── pair_trainer.py
@@ -73,10 +75,6 @@ src/
 │   ├── image_cache.py
 │   ├── logging/
 │   └── serializers/       # zarr, pickle, image, npy, mat, keras, json
-└── processors/
-    ├── author_data_loader.py
-    ├── author_processor.py
-    └── line_segment_processor.py
 ```
 
 ### Design Principles
@@ -135,7 +133,7 @@ dataset_<variant>_<timestamp>.zarr
 ├── non_test/
 │   ├── images    # patches from the remaining area (train + val)
 │   └── labels
-└── attrs         # metadata: num_authors, patch_shape, strides, seed, created_at
+└── attrs         # metadata: num_authors, patch_shape, strides, seed, created_at, author_names
 ```
 
 Author label assignment is deterministic: authors are sorted by `natural_key` (numeric-aware string sort) before enumeration, ensuring consistent ids across runs.
@@ -179,23 +177,33 @@ split = loader.load(author_ids=range(204))  # select subset of authors
 
 ```python
 from src.generators import TripletGenerator
-from src.models.backbones import MobileNetBackbone
-from src.training import ModelTrainerFactory
+from src.models import MobileNetV2Backbone, EmbeddingNetwork, SiameseFactory, TripletLoss
+from src.training import ModelTrainerFactory, get_default_callbacks
 
-train_gen = TripletGenerator(loader=split.train, batch_size=32)
-val_gen   = TripletGenerator(loader=split.val,   batch_size=32)
+train_gen = TripletGenerator(split=train, batch_size=64, seed=42, augment=augment_train)
+val_gen   = TripletGenerator(split=val,   batch_size=32, seed=42, augment=augment)
+
+embedding_network = EmbeddingNetwork(
+    backbone=MobileNetV2Backbone(freeze_base=False, fine_tune_at=100),
+    input_shape=(120, 240, 3),
+    num_authors=204,
+)
+
+siamese_builder = SiameseFactory.create(
+    model_type="triplet",
+    embedding_network=embedding_network,
+    input_shape=(120, 240, 3),
+)
 
 trainer = ModelTrainerFactory.create(
-    backbone=MobileNetBackbone(),
-    input_shape=(128, 128, 1),
-    num_authors=204,
+    siamese_builder=siamese_builder,
     train_generator=train_gen,
     val_generator=val_gen,
     model_type="triplet",
 )
 
 trainer.initialize_model()
-trainer.compile(optimizer=Adam(1e-4), loss=TripletLoss(margin=0.2), metrics=[...])
+trainer.compile(optimizer=Adam(1e-5), loss=TripletLoss(margin=0.4), metrics=[...])
 trainer.train_model(epochs=50, callbacks=get_default_callbacks(...))
 ```
 

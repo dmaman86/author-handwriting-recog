@@ -1,12 +1,12 @@
 from .backbones import (BaseBackbone, DeepCNNBackbone, EfficientNetV2Backbone,
                         MobileNetV2Backbone)
-from .base_metric_model import BaseMetricModel
 from .embedding_network import EmbeddingNetwork
 from .layers import (CosineDistanceLayer, CosineSimilarityLayer, DistanceLayer,
                      EuclideanDistanceLayer, L2Normalization,
                      ScaledCosineLayer)
 from .losses import BinaryCrossEntropyDistance, ContrastiveLoss, TripletLoss
-from .siamese_factory import SiameseFactory
+from .siamese import (BaseSiameseBuilder, SiameseFactory, SiamesePairBuilder,
+                      SiameseTripletBuilder)
 
 __all__ = [
     # backbones
@@ -18,11 +18,13 @@ __all__ = [
     "ContrastiveLoss",
     "BinaryCrossEntropyDistance",
     "TripletLoss",
-    # factory
+    # siamese
     "SiameseFactory",
-    "BaseMetricModel",
-    "L2Normalization",
+    "BaseSiameseBuilder",
+    "SiamesePairBuilder",
+    "SiameseTripletBuilder",
     # layers
+    "L2Normalization",
     "EuclideanDistanceLayer",
     "CosineSimilarityLayer",
     "CosineDistanceLayer",

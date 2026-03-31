@@ -6,7 +6,7 @@ import pandas as pd
 import seaborn as sns
 from sklearn.metrics import confusion_matrix
 
-from ..datasets import ZarrLoader
+from ..datasets import DatasetSplit
 from ..io.logging import LoggerFactory
 from .evaluator import EmbeddingAnalysisReport
 
@@ -17,12 +17,12 @@ class EmbeddingVisualizer:
         self,
         report: EmbeddingAnalysisReport,
         logger: LoggerFactory,
-        loader: ZarrLoader,
+        split: DatasetSplit,
     ) -> None:
         self._strategy: str | None = None
         self._results = None
         self.logger = logger
-        self.loader = loader
+        self.split = split
 
         self.df_base = report.df_embeddings
         self.strategy_results = report.strategy_results
@@ -48,9 +48,10 @@ class EmbeddingVisualizer:
     # -------------------------
     # Internal helpers
     # -------------------------
-    def _get_image(self, idx: int) -> np.ndarray:
-        img = self.loader.images[idx]
-        return img.squeeze()
+    def _author_name(self, author_id: int) -> str:
+        return self.split.author_names[
+            np.where(self.split.author_ids == author_id)[0][0]
+        ]
 
     def _get_df(self, level: str) -> pd.DataFrame:
         if level not in self.results:
@@ -76,55 +77,29 @@ class EmbeddingVisualizer:
         plt.show()
 
     # -------------------------
-    # Errors
-    # -------------------------
-    def plot_errors_2d(self, level: str = "patch"):
-        df = self._get_df(level).copy()
-        self._require_predictions(df, level)
-
-        df["is_error"] = df["author"] != df["author_pred"]
-        colors = df["is_error"].map({True: "red", False: "blue"})
-
-        plt.figure(figsize=(8, 6))
-        plt.scatter(self.df_base["x"], self.df_base["y"], c=colors, s=10)
-        plt.title(f"Errors ({level}) - {self.strategy}")
-        plt.show()
-
-    def plot_author_errors_2d(self):
-        df_vote = self._get_df("vote")
-        bad_authors = set(df_vote[df_vote["correct"] == False]["author"])
-
-        df = self.df_base.copy()
-        df["author_error"] = df["author"].isin(bad_authors)
-
-        colors = df["author_error"].map({True: "red", False: "blue"})
-
-        plt.figure(figsize=(8, 6))
-        plt.scatter(df["x"], df["y"], c=colors, s=10)
-        plt.title(f"Author-level Errors - {self.strategy}")
-        plt.show()
-
-    # -------------------------
     # Patch-only (images)
     # -------------------------
-    def plot_with_images(self, n=50):
+    def log_samples(self, n: int = 50):
         df = self._get_df("patch")
-        sample = df.sample(n)
 
-        plt.figure(figsize=(10, 10))
-        for i, row in enumerate(sample.itertuples()):
-            idx = int(row.idx)
-            img = self._get_image(idx)
+        if len(df) == 0:
+            self.logger.info("Empty dataframe")
+            return
 
-            plt.subplot(10, 5, i + 1)
-            plt.imshow(img, cmap="gray")
-            plt.title(f"{row.author}->{row.author_pred}")
-            plt.axis("off")
+        sample = df.sample(min(n, len(df)))
 
-        plt.tight_layout()
-        plt.show()
+        self.logger.info(f"Showing {len(sample)} samples:")
 
-    def plot_error_images(self, n=50):
+        for row in sample.itertuples():
+            true_name = self._author_name(row.author)
+
+            if hasattr(row, "author_pred"):
+                pred_name = self._author_name(row.author_pred)
+                self.logger.info(f"[idx={row.idx}] {true_name} → {pred_name}")
+            else:
+                self.logger.info(f"[idx={row.idx}] {true_name}")
+
+    def log_error_samples(self, n: int = 50):
         df = self._get_df("patch")
         df_errors = df[df["author"] != df["author_pred"]]
 
@@ -134,51 +109,16 @@ class EmbeddingVisualizer:
 
         sample = df_errors.sample(min(n, len(df_errors)))
 
-        plt.figure(figsize=(10, 10))
-        for i, row in enumerate(sample.itertuples()):
-            idx = int(row.idx)
-            img = self._get_image(idx)
+        self.logger.info(f"Showing {len(sample)} error samples:")
 
-            plt.subplot(10, 5, i + 1)
-            plt.imshow(img, cmap="gray")
-            plt.title(f"{row.author} → {row.author_pred}", color="red")
-            plt.axis("off")
+        for row in sample.itertuples():
+            true_name = self._author_name(row.author)
+            pred_name = self._author_name(row.author_pred)
 
-        plt.tight_layout()
-        plt.show()
-
-    # -------------------------
-    # Author-level analysis
-    # -------------------------
-    def plot_author_accuracy(self):
-        df = self._get_df("vote").copy()
-        df["correct"] = df["correct"].astype(int)
-
-        plt.figure(figsize=(10, 4))
-        plt.bar(df["author"], df["correct"])
-        plt.title(f"Author Accuracy (vote) - {self.strategy}")
-        plt.xlabel("Author")
-        plt.ylabel("Correct")
-        plt.show()
-
-    def plot_vote_vs_score_disagreement(self):
-        vote_df = self._get_df("vote")
-        score_df = self._get_df("score")
-
-        df = vote_df.merge(
-            score_df,
-            on="author",
-            suffixes=("_vote", "_score"),
-        )
-
-        disagreements = df[df["author_pred_vote"] != df["author_pred_score"]]
-
-        if len(disagreements) == 0:
-            self.logger.info("No disagreement between vote and score 🎉")
-            return
-
-        self.logger.info("Disagreements:")
-        self.logger.info(f"\n{disagreements.head()}")
+            self.logger.info(
+                f"[idx={row.idx}] true={true_name} pred={pred_name} "
+                f"(author_id={row.author} → {row.author_pred})"
+            )
 
     # -------------------------
     # Confusion matrix
@@ -214,18 +154,25 @@ class EmbeddingVisualizer:
         sims = X @ query_emb
         top_k = np.argsort(-sims)[:k]
 
-        plt.figure(figsize=(k * 3, 3))
+        query_author_id = row.author
+        query_author = self._author_name(query_author_id)
 
-        for i, idx_df in enumerate(top_k):
-            idx = int(self.df_base.iloc[idx_df]["idx"])
-            img = self._get_image(idx)
+        self.logger.info(f"Query idx={row.idx} | author={query_author}")
+        self.logger.info("Top-K nearest:")
 
-            plt.subplot(1, k, i + 1)
-            plt.imshow(img, cmap="gray")
-            plt.title(f"sim={sims[idx_df]:.2f}")
-            plt.axis("off")
+        for rank, idx_df in enumerate(top_k):
+            row_k = self.df_base.iloc[idx_df]
 
-        plt.show()
+            author_id = row_k.author
+            author_name = self._author_name(author_id)
+            sim = sims[idx_df]
+
+            match = "✓" if author_id == query_author_id else "✗"
+
+            self.logger.info(
+                f"{rank+1}. [idx={row_k.idx}] {author_name} "
+                f"| sim={sim:.4f} | {match}"
+            )
 
     # -------------------------
     # Centroids

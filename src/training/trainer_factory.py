@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from ..generators import BaseGenerator, PairGenerator, TripletGenerator
-from ..models import BaseBackbone, EmbeddingNetwork, SiameseFactory
+from ..models import BaseSiameseBuilder
 from .base_metric_trainer import BaseMetricTrainer
 from .pair_trainer import PairTrainer
 from .triplet_trainer import TripletTrainer
@@ -34,9 +34,7 @@ class ModelTrainerFactory:
     @classmethod
     def create(
         cls,
-        backbone: BaseBackbone,
-        input_shape: tuple[int, int, int],
-        num_authors: int,
+        siamese_builder: BaseSiameseBuilder,
         train_generator: BaseGenerator,
         val_generator: BaseGenerator,
         model_name: str = "metric_model",
@@ -54,21 +52,9 @@ class ModelTrainerFactory:
         spec.validate_generator("train_generator", train_generator)
         spec.validate_generator("val_generator", val_generator)
 
-        embedding_network = EmbeddingNetwork(
-            backbone=backbone,
-            input_shape=input_shape,
-            num_authors=num_authors,
-        )
-
-        model_builder = SiameseFactory.create(
-            model_type=model_type,
-            input_shape=input_shape,
-        )
-
         return spec.trainer_class(
-            embedding_network=embedding_network,
+            siamese_builder=siamese_builder,
             train_generator=train_generator,
             val_generator=val_generator,
-            model_builder=model_builder,
             name=model_name,
         )

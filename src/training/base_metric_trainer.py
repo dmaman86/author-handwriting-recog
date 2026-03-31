@@ -1,41 +1,42 @@
 import tensorflow as tf
 
 from ..generators import BaseGenerator
-from ..models import BaseMetricModel, EmbeddingNetwork
+from ..models import BaseSiameseBuilder
 
 
 class BaseMetricTrainer(tf.keras.Model):
 
     def __init__(
         self,
-        embedding_network: EmbeddingNetwork,
-        model_builder: BaseMetricModel,
+        siamese_builder: BaseSiameseBuilder,
         train_generator: BaseGenerator,
         val_generator: BaseGenerator,
         name: str = "base_metric_trainer",
     ) -> None:
         super().__init__(name=name)
 
-        self.embedding_network = embedding_network
-        self.model_builder = model_builder
+        self.siamese_builder = siamese_builder
         self.train_generator = train_generator
         self.val_generator = val_generator
 
         self.siamese_network: tf.keras.Model | None = None
-        self.embedding_model: tf.keras.Model | None = None
 
         self.loss_tracker = tf.keras.metrics.Mean(name="loss")
         self.user_metrics: list[tf.keras.metrics.Metric] = []
 
     def initialize_model(self) -> None:
 
-        self.embedding_model = self.embedding_network.build_model()
-
-        self.siamese_network = self.model_builder.build(
-            embedding_model=self.embedding_model,
-        )
+        self.siamese_network = self.siamese_builder.build()
 
         super().build(input_shape=self.siamese_network.input_shape)
+
+    @property
+    def embedding_model(self) -> tf.keras.Model:
+        if self.siamese_network is None:
+            raise ValueError(
+                "The model must be built before accessing the embedding model."
+            )
+        return self.siamese_builder.embedding_model
 
     def compile(
         self,
