@@ -1,4 +1,4 @@
-from .agregators import PatchAggregator, ScoreAggregator, VoteAggregator
+from .aggregators import PatchAggregator, ScoreAggregator, VoteAggregator
 from .centroid_strategy import CentroidStrategy
 from .mean_strategy import MeanStrategy
 from .one_nn_strategy import OneNNStrategy

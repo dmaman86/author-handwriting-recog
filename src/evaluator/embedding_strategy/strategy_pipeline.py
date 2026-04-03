@@ -1,6 +1,6 @@
 from ...io import LoggerFactory
 from ..evaluator import EmbeddingContext, StrategyResult
-from .agregators import Aggregator
+from .aggregators import Aggregator
 from .base_strategy import BaseStrategy
 
 

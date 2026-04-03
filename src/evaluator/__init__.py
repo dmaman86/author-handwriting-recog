@@ -1,4 +1,5 @@
 from .embedding_evaluator import EmbeddingAnalysisReport, EmbeddingEvaluator
+from .embedding_utils import UMAPReducer
 from .embedding_visualizer import EmbeddingVisualizer
 from .evaluator import (ErrorAnalysis, EvaluatedPrediction,
                         PairStrategyMetrics, PredictionResult, StrategyMetrics)
@@ -22,4 +23,5 @@ __all__ = [
     "TripletLocalMetrics",
     "TripletGlobalMetrics",
     "TripletReport",
+    "UMAPReducer",
 ]

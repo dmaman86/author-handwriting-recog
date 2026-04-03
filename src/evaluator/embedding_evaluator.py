@@ -18,12 +18,17 @@ class EmbeddingEvaluator:
     ):
         self.extractor = extractor
         self.pipeline = pipeline
-        self.reducer = UMAPReducer(random_state=seed)
+        self.seed = seed
         self.rng = np.random.default_rng(seed)
         self.logger = logger
 
-    def evaluate(self, data_generator: DataGenerator) -> EmbeddingAnalysisReport:
+    def evaluate(
+        self,
+        data_generator: DataGenerator,
+        reducer: UMAPReducer | None = None,
+    ) -> EmbeddingAnalysisReport:
         self.logger.info("[EmbeddingEvaluator] Starting evaluation")
+        reducer = reducer or UMAPReducer(random_state=self.seed)
 
         df = self.extractor.extract(data_generator)
 
@@ -35,7 +40,9 @@ class EmbeddingEvaluator:
 
         self.logger.info("[EmbeddingEvaluator] Computing intra/inter distances")
         intra, inter = EmbeddingGeometry.intra_inter_distance(X, y, self.rng)
-        df_umap, reducer = self.reducer.transform(df)
+
+        self.logger.info("[EmbeddingEvaluator] Reducing dimensionality with UMAP")
+        df_umap, reducer = reducer.transform(df)
 
         self.logger.info("[EmbeddingEvaluator] Evaluating strategies")
         context = EmbeddingContext(df=df, X=X, y=y, df_umap=df_umap)

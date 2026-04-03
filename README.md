@@ -10,14 +10,15 @@ The system learns an embedding space where patches from the same author cluster 
 
 ### MobileNetV2 + Triplet Loss — 204 Authors (seen writers)
 
-| Strategy   | Aggregation | Accuracy |
-|------------|-------------|----------|
-| 1-NN       | vote        | 100.00%  |
-| Top-K      | vote        | 99.51%   |
-| Centroid   | vote        | 91.67%   |
-| Mean       | vote        | 57.84%   |
+| Strategy | Aggregation | Accuracy |
+| -------- | ----------- | -------- |
+| 1-NN     | vote        | 100.00%  |
+| Top-K    | vote        | 99.51%   |
+| Centroid | vote        | 91.67%   |
+| Mean     | vote        | 57.84%   |
 
 Embedding quality (cosine distance):
+
 - Intra-author distance: **0.3546**
 - Inter-author distance: **0.9753**
 
@@ -63,7 +64,7 @@ src/
 │   │   ├── centroid_strategy.py
 │   │   ├── mean_strategy.py
 │   │   ├── topk_strategy.py
-│   │   ├── agregators.py      # PatchAggregator, VoteAggregator, ScoreAggregator
+│   │   ├── aggregators.py      # PatchAggregator, VoteAggregator, ScoreAggregator
 │   │   └── strategy_pipeline.py
 │   ├── embedding_evaluator.py
 │   ├── embedding_visualizer.py
@@ -72,7 +73,7 @@ src/
 ├── io/
 │   ├── file_system.py
 │   ├── image_ops.py
-│   ├── image_cache.py
+│   ├── exceptions.py
 │   ├── logging/
 │   └── serializers/       # zarr, pickle, image, npy, mat, keras, json
 ```
@@ -94,12 +95,12 @@ The raw dataset consists of 407 handwritten document images (one per author), ea
 
 Each author image is processed in 4 preprocessing variants:
 
-| Folder                    | Description                        |
-|---------------------------|------------------------------------|
-| `1_ImagesRotated`         | Deskewed original                  |
-| `2_ImagesMedianBW`        | Median-filtered binary             |
-| `3_ImagesLinesRemovedBW`  | Lines removed, binary              |
-| `4_ImagesLinesRemoved`    | Lines removed, grayscale           |
+| Folder                   | Description              |
+| ------------------------ | ------------------------ |
+| `1_ImagesRotated`        | Deskewed original        |
+| `2_ImagesMedianBW`       | Median-filtered binary   |
+| `3_ImagesLinesRemovedBW` | Lines removed, binary    |
+| `4_ImagesLinesRemoved`   | Lines removed, grayscale |
 
 ### Patch extraction
 
