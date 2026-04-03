@@ -2,7 +2,7 @@
 
 Deep learning pipeline for **writer identification** from handwritten documents, using Siamese Networks with Triplet Loss for metric learning.
 
-The system learns an embedding space where patches from the same author cluster together and patches from different authors are pushed apart, enabling identification of both seen and unseen writers.
+The system learns an embedding space where patches from the same author cluster together and patches from different authors are pushed apart, enabling identification of seen writers through embedding-based similarity and retrieval strategies.
 
 ---
 
@@ -21,6 +21,25 @@ Embedding quality (cosine distance):
 
 - Intra-author distance: **0.3546**
 - Inter-author distance: **0.9753**
+
+### MobileNetV2 + Triplet Loss — Last 203 Authors (seen writers)
+
+| Strategy | Aggregation | Accuracy |
+| -------- | ----------- | -------- |
+| 1-NN     | vote        | 100.00%  |
+| Top-K    | vote        | 99.01%   |
+| Centroid | vote        | 83.74%   |
+| Mean     | vote        | 52.22%   |
+
+Embedding quality (cosine distance):
+
+- Intra-author distance: **0.3353**
+- Inter-author distance: **0.9447**
+
+Triplet evaluation:
+
+- AUC: **0.9199**
+- Triplet accuracy: **91.53%**
 
 ---
 
