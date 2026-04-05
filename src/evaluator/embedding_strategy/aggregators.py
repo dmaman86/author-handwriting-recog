@@ -28,11 +28,10 @@ class VoteAggregator(Aggregator):
 
     def apply(self, df: pd.DataFrame) -> pd.DataFrame:
 
-        preds = df.groupby("author")["author_pred"].agg(
-            lambda x: x.value_counts().idxmax()
-        )
-        result = preds.reset_index()
-        result.columns = ["author", "author_pred"]
+        counts = df.groupby(["author", "author_pred"]).size().reset_index(name="count")
+
+        best_idx = counts.groupby("author")["count"].idxmax()
+        result = counts.loc[best_idx, ["author", "author_pred"]].reset_index(drop=True)
 
         result["correct"] = result["author"] == result["author_pred"]
 
@@ -44,14 +43,16 @@ class ScoreAggregator(Aggregator):
     name = "score"
 
     def apply(self, df: pd.DataFrame) -> pd.DataFrame:
-        grouped = df.groupby("author")
 
-        preds = grouped.apply(
-            lambda g: g.groupby("author_pred")["score"].mean().idxmax()
+        summed_scores = (
+            df.groupby(["author", "author_pred"])["score"].sum().reset_index()
         )
 
-        result = preds.reset_index()
-        result.columns = ["author", "author_pred"]
+        best_preds_idx = summed_scores.groupby("author")["score"].idxmax()
+
+        result = summed_scores.loc[
+            best_preds_idx, ["author", "author_pred"]
+        ].reset_index(drop=True)
 
         result["correct"] = result["author"] == result["author_pred"]
 

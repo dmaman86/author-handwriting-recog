@@ -5,7 +5,6 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import seaborn as sns
-from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
 from sklearn.cluster import DBSCAN
 from sklearn.metrics import confusion_matrix
 from sklearn.neighbors import NearestNeighbors
@@ -100,23 +99,32 @@ class EmbeddingVisualizer:
         fig.show()
 
     def _plot_embeddings_3d(self):
-        fig = plt.figure(figsize=(12, 9))
-        ax = fig.add_subplot(111, projection="3d")
-
-        ax.scatter(
-            self.df_base["umap_0"],
-            self.df_base["umap_1"],
-            self.df_base["umap_2"],
-            c=self.df_base["author"],
-            s=10,
-            alpha=0.7,
+        author_names = self.df_base["author"].map(self._author_name)
+        fig = go.Figure(
+            go.Scatter3d(
+                x=self._f(self.df_base["umap_0"]),
+                y=self._f(self.df_base["umap_1"]),
+                z=self._f(self.df_base["umap_2"]),
+                mode="markers",
+                marker=dict(
+                    color=self._f(self.df_base["author"]),
+                    colorscale="Viridis",
+                    size=3,
+                    opacity=0.7,
+                    showscale=True,
+                ),
+                text=author_names,
+            )
         )
-
-        ax.set_title(f"Embedding (UMAP 3D) - {self.strategy}")
-        ax.set_xlabel("UMAP 1")
-        ax.set_ylabel("UMAP 2")
-        ax.set_zlabel("UMAP 3")
-        plt.show()
+        fig.update_layout(
+            title=f"Embedding (UMAP 3D) - {self.strategy}",
+            scene=dict(
+                xaxis_title="UMAP 1",
+                yaxis_title="UMAP 2",
+                zaxis_title="UMAP 3",
+            ),
+        )
+        fig.show()
 
     def plot_embeddings(self):
         dims = self._get_umap_dims()
@@ -360,67 +368,116 @@ class EmbeddingVisualizer:
     def _plot_centroids_3d(
         self, centroids: pd.DataFrame, highlight: Iterable[int] | None = None
     ):
-        fig = plt.figure(figsize=(12, 9))
-        ax = fig.add_subplot(111, projection="3d")
-
-        # Base scatter
-        ax.scatter(
-            self.df_base["umap_0"],
-            self.df_base["umap_1"],
-            self.df_base["umap_2"],
-            c=self.df_base["author"],
-            s=5,
-            alpha=0.3,
-        )
+        fig = go.Figure()
 
         if highlight is not None:
-            sub = centroids[centroids["author"].isin(set(highlight))]
-            ax.scatter(
-                sub["umap_0"],
-                sub["umap_1"],
-                sub["umap_2"],
-                c="red",
-                s=120,
-                label="highlight",
-            )
-            for row in sub.itertuples():
-                ax.text(
-                    row.umap_0,
-                    row.umap_1,
-                    row.umap_2,
-                    self._author_name(row.author),
-                    fontsize=8,
+            highlight_set = set(highlight)
+
+            # Only samples from highlighted authors
+            df_sub = self.df_base[self.df_base["author"].isin(highlight_set)]
+            fig.add_trace(
+                go.Scatter3d(
+                    x=self._f(df_sub["umap_0"]),
+                    y=self._f(df_sub["umap_1"]),
+                    z=self._f(df_sub["umap_2"]),
+                    mode="markers",
+                    marker=dict(
+                        color=self._f(df_sub["author"]),
+                        colorscale="Viridis",
+                        size=3,
+                        opacity=0.5,
+                    ),
+                    hovertext=df_sub["author"].apply(
+                        lambda a: f"{self._author_name(a)} (id={a})"
+                    ),
+                    hoverinfo="text",
+                    name="samples",
                 )
+            )
+
+            sub = centroids[centroids["author"].isin(highlight_set)]
+            fig.add_trace(
+                go.Scatter3d(
+                    x=self._f(sub["umap_0"]),
+                    y=self._f(sub["umap_1"]),
+                    z=self._f(sub["umap_2"]),
+                    mode="markers+text",
+                    marker=dict(color="red", size=8),
+                    text=sub["author"].apply(self._author_name),
+                    hovertext=sub["author"].apply(
+                        lambda a: f"{self._author_name(a)} (id={a})"
+                    ),
+                    hoverinfo="text",
+                    name="highlight",
+                )
+            )
         else:
+            # All samples
+            fig.add_trace(
+                go.Scatter3d(
+                    x=self._f(self.df_base["umap_0"]),
+                    y=self._f(self.df_base["umap_1"]),
+                    z=self._f(self.df_base["umap_2"]),
+                    mode="markers",
+                    marker=dict(size=3, opacity=0.4),
+                    hovertext=self.df_base["author"].apply(
+                        lambda a: f"{self._author_name(a)} (id={a})"
+                    ),
+                    hoverinfo="text",
+                    name="samples",
+                )
+            )
+
             # Noise centroids (DBSCAN label == -1)
             noise = centroids[centroids["cluster"] == -1]
             if not noise.empty:
-                ax.scatter(
-                    noise["umap_0"],
-                    noise["umap_1"],
-                    noise["umap_2"],
-                    c="gray",
-                    s=80,
-                    marker="x",
-                    label="noise",
+                fig.add_trace(
+                    go.Scatter3d(
+                        x=self._f(noise["umap_0"]),
+                        y=self._f(noise["umap_1"]),
+                        z=self._f(noise["umap_2"]),
+                        mode="markers",
+                        marker=dict(size=6, color="gray", symbol="x"),
+                        hovertext=noise["author"].apply(
+                            lambda a: f"{self._author_name(a)} (id={a})"
+                        ),
+                        hoverinfo="text",
+                        name="noise",
+                    )
                 )
 
             # Clustered centroids
             clustered = centroids[centroids["cluster"] >= 0]
             if not clustered.empty:
-                ax.scatter(
-                    clustered["umap_0"],
-                    clustered["umap_1"],
-                    clustered["umap_2"],
-                    c=clustered["cluster"],
-                    cmap="tab10",
-                    s=80,
-                    label="centroids",
+                fig.add_trace(
+                    go.Scatter3d(
+                        x=self._f(clustered["umap_0"]),
+                        y=self._f(clustered["umap_1"]),
+                        z=self._f(clustered["umap_2"]),
+                        mode="markers",
+                        marker=dict(
+                            size=6,
+                            color=self._f(clustered["cluster"]),
+                            colorscale="Rainbow",
+                            showscale=True,
+                        ),
+                        hovertext=clustered["author"].apply(
+                            lambda a: f"{self._author_name(a)} (id={a})"
+                        ),
+                        hoverinfo="text",
+                        name="centroids",
+                    )
                 )
 
-        ax.set_title(f"Centroids (3D) - {self.strategy}")
-        ax.legend()
-        plt.show()
+        fig.update_layout(
+            title=f"Centroids (3D) - {self.strategy}",
+            scene=dict(
+                xaxis_title="UMAP 1",
+                yaxis_title="UMAP 2",
+                zaxis_title="UMAP 3",
+            ),
+        )
+        fig.show()
 
     def plot_centroids(self, highlight: Iterable[int] | None = None):
         dims = self._get_umap_dims()
