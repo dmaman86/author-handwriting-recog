@@ -1,0 +1,22 @@
+project_path: drive/MyDrive/author-handwriting-recog
+dataset: dataset_4_ImagesLinesRemoved_20260310-153450
+
+model:
+  type: triplet
+
+data:
+  authors_range:
+    start: 0
+    end: 100
+  original_shape: [180, 360, 1]
+  model_input_shape: [120, 240, 3]
+
+training:
+  epochs: 30
+  seed: 42
+  val_ratio: 0.25
+
+batch:
+  train: 32
+  validation: 16
+  test: 8
