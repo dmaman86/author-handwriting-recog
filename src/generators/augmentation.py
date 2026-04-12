@@ -112,7 +112,11 @@ class AugmentationOps:
         if self.resize_dim is None:
             return image
 
-        return tf.image.resize(image, self.resize_dim)
+        return tf.image.resize_with_pad(
+            image,
+            target_height=self.resize_dim[0],
+            target_width=self.resize_dim[1],
+        )
 
     def to_rgb(self, image: tf.Tensor) -> tf.Tensor:
         return tf.image.grayscale_to_rgb(image)
@@ -125,6 +129,10 @@ class AugmentationOps:
 
     def mobilenet_preprocess(self, image: tf.Tensor) -> tf.Tensor:
         return tf.keras.applications.mobilenet_v2.preprocess_input(image)
+
+    def vit_preprocess(self, image: tf.Tensor) -> tf.Tensor:
+        # Vit expects inputs normalized to [-1, 1]
+        return (image / 127.5) - 1.0
 
     def custom_preprocess(self, image: tf.Tensor) -> tf.Tensor:
         return image / 255.0

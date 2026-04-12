@@ -49,6 +49,54 @@ Triplet evaluation: AUC **0.955** · Triplet accuracy **95.19%** · EER **0.1126
 
 ---
 
+### Model Comparison — 100 Authors
+
+Direct comparison of MobileNetV2, EfficientNetV2B2, and ViT-B/16 trained on 100 authors. ViT uses input shape `(224, 224)` with `resize_with_pad`; the other two use `(120, 240)`.
+
+#### Closed-set — 100 seen authors
+
+| Model | Strategy | Vote acc | Score acc | Intra | Inter |
+|-------|----------|----------|-----------|-------|-------|
+| MobileNetV2 | 1-NN | 100.00% | 100.00% | 0.365 | 0.996 |
+| MobileNetV2 | Top-K | 100.00% | 100.00% | | |
+| MobileNetV2 | Centroid | 97.00% | 97.00% | | |
+| MobileNetV2 | Mean | 72.00% | 70.00% | | |
+| EfficientNetV2B2 | 1-NN | 100.00% | 100.00% | **0.276** | **1.002** |
+| EfficientNetV2B2 | Top-K | 100.00% | 100.00% | | |
+| EfficientNetV2B2 | Centroid | **99.00%** | **99.00%** | | |
+| EfficientNetV2B2 | Mean | **78.00%** | **78.00%** | | |
+| ViT-B/16 | 1-NN | 100.00% | 100.00% | 0.325 | 0.981 |
+| ViT-B/16 | Top-K | 100.00% | 100.00% | | |
+| ViT-B/16 | Centroid | 98.00% | 98.00% | | |
+| ViT-B/16 | Mean | 72.00% | 70.00% | | |
+
+#### Open-set — 100 unseen authors (authors 100–199)
+
+| Model | Strategy | Vote acc | Score acc | Intra | Inter |
+|-------|----------|----------|-----------|-------|-------|
+| MobileNetV2 | 1-NN | 100.00% | 100.00% | 0.439 | 0.935 |
+| MobileNetV2 | Top-K | 100.00% | 100.00% | | |
+| MobileNetV2 | Centroid | 86.87% | 86.87% | | |
+| MobileNetV2 | Mean | 47.47% | 44.44% | | |
+| EfficientNetV2B2 | 1-NN | 100.00% | 100.00% | 0.351 | 0.935 |
+| EfficientNetV2B2 | Top-K | 100.00% | 100.00% | | |
+| EfficientNetV2B2 | Centroid | 90.91% | 90.91% | | |
+| EfficientNetV2B2 | Mean | **61.62%** | **61.62%** | | |
+| ViT-B/16 | 1-NN | 100.00% | 100.00% | **0.325** | 0.883 |
+| ViT-B/16 | Top-K | 100.00% | 100.00% | | |
+| ViT-B/16 | Centroid | **91.92%** | **91.92%** | | |
+| ViT-B/16 | Mean | 56.57% | 55.56% | | |
+
+#### Key observations
+
+- **1-NN and Top-K** reach 100% vote and score on both seen and unseen authors across all three models — the primary identification strategies are fully reliable at this scale.
+- **EfficientNetV2B2** forms the most compact embedding space on seen authors (intra 0.276), which explains its centroid and mean advantage on the closed-set.
+- **ViT-B/16** achieves the lowest intra distance on **unseen** authors (0.325 vs 0.351 for EfficientNet), indicating stronger generalization of its embedding space to new identities.
+- **Mean strategy** remains the weakest across all models, confirming that the embedding space is not unimodal per author — this is a structural property of handwriting, not a model limitation.
+- ViT triplet evaluation: AUC **0.9372** · Triplet accuracy **93.66%** · EER **0.1386**
+
+---
+
 ### Open-set Evaluation — 203 unseen authors (authors 204–406)
 
 Same trained models evaluated on authors never seen during training. Validates that the learned embedding space generalizes to new identities.
@@ -153,7 +201,8 @@ Siamese networks with triplet loss learn embedding spaces that are both discrimi
 │   ├── efficientnet_test_10_4.ipynb
 │   ├── efficientnet_test_40_4.ipynb
 │   ├── efficientnet_test_100_4.ipynb
-│   └── efficientnet_test_204_4.ipynb
+│   ├── efficientnet_test_204_4.ipynb
+│   └── vit_test_100_4.ipynb
 └── src/
     ├── datasets/
     │   ├── builders/              # AuthorDatasetBuilder, DatasetBuilder
@@ -165,7 +214,7 @@ Siamese networks with triplet loss learn embedding spaces that are both discrimi
     │   ├── triplet_generator.py
     │   └── augmentation.py
     ├── models/
-    │   ├── backbones/             # MobileNetV2, EfficientNetV2, DeepCNN
+    │   ├── backbones/             # MobileNetV2, EfficientNetV2, ViT-B/16, DeepCNN
     │   ├── losses/                # TripletLoss, ContrastiveLoss
     │   ├── layers.py              # CosineDistance, CosineSimilarity, L2Normalization
     │   ├── siamese/

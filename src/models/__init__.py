@@ -1,5 +1,5 @@
 from .backbones import (BaseBackbone, DeepCNNBackbone, EfficientNetV2Backbone,
-                        MobileNetV2Backbone)
+                        MobileNetV2Backbone, ViTBackbone)
 from .embedding_network import EmbeddingNetwork
 from .layers import (CosineDistanceLayer, CosineSimilarityLayer, DistanceLayer,
                      EuclideanDistanceLayer, L2Normalization,
@@ -14,6 +14,7 @@ __all__ = [
     "DeepCNNBackbone",
     "MobileNetV2Backbone",
     "EfficientNetV2Backbone",
+    "ViTBackbone",
     # losses
     "ContrastiveLoss",
     "BinaryCrossEntropyDistance",
