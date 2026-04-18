@@ -1,5 +1,20 @@
 # Author Handwriting Recognition
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/dmaman86/author-handwriting-recog)
+
+![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)
+![TensorFlow](https://img.shields.io/badge/TensorFlow-2.x-FF6F00?logo=tensorflow&logoColor=white)
+![Keras](https://img.shields.io/badge/Keras-Deep%20Learning-D00000?logo=keras&logoColor=white)
+![OpenCV](https://img.shields.io/badge/OpenCV-Image%20Processing-5C3EE8?logo=opencv&logoColor=white)
+![Jupyter](https://img.shields.io/badge/Jupyter-Notebooks-F37626?logo=jupyter&logoColor=white)
+
+![Accuracy](https://img.shields.io/badge/Accuracy-~100%25_vote_level-1D9E75)
+![Authors](https://img.shields.io/badge/Authors-204-7F77DD)
+![Architecture](https://img.shields.io/badge/Architecture-Siamese_Network-FF6F00)
+
+![License](https://img.shields.io/badge/License-MIT-blue)
+![Status](https://img.shields.io/badge/Status-Research-BA7517)
+
 This project addresses **writer identification** from handwritten documents using deep metric learning. A Siamese network with triplet loss is trained to learn an embedding space where patches from the same author are close together and patches from different authors are pushed apart.
 
 The system is evaluated under two conditions:
