@@ -10,7 +10,7 @@ absl-py==2.4.0
     #   tensorflow
 astunparse==1.6.3
     # via tensorflow
-certifi==2026.2.25
+certifi==2026.10.18
     # via requests
 charset-normalizer==3.4.6
     # via requests
